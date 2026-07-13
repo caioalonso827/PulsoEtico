@@ -59,7 +59,7 @@ public class Funcionario {
     @Column(nullable = false)
     private Papel papel;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "setor_id", nullable = false)
     private Setor setor;
 

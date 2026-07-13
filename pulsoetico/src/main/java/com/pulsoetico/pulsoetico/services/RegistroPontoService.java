@@ -17,8 +17,6 @@ public class RegistroPontoService {
 
     private static final RegistroPonto.TipoRegistro[] SEQUENCIA = {
             RegistroPonto.TipoRegistro.ENTRADA,
-            RegistroPonto.TipoRegistro.INICIO_INTERVALO,
-            RegistroPonto.TipoRegistro.FIM_INTERVALO,
             RegistroPonto.TipoRegistro.SAIDA
     };
 

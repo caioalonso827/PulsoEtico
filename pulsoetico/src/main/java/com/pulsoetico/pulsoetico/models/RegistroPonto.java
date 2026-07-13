@@ -1,5 +1,6 @@
 package com.pulsoetico.pulsoetico.models;
 
+
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -21,7 +22,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Um registro de ponto (entrada, saída ou intervalo), com foto de comprovação.
+ * Um registro de ponto (ENTRADA ou SAIDA), com foto de comprovação.
  *
  * A foto fica aqui só como prova/auditoria manual — não há verificação facial
  * automática no MVP. Esses registros também alimentam o cálculo de horas extras
@@ -73,8 +74,6 @@ public class RegistroPonto {
 
     public enum TipoRegistro {
         ENTRADA,
-        INICIO_INTERVALO,
-        FIM_INTERVALO,
         SAIDA
     }
 }
