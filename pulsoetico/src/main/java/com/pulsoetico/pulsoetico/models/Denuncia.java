@@ -33,12 +33,12 @@ public class Denuncia {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "setor_id", nullable = false)
     private Setor setor;
 
     @Column(nullable = false, length = 80)
-    private String categoria;
+    private String tipo;
 
     @Column(columnDefinition = "TEXT")
     private String descricao;

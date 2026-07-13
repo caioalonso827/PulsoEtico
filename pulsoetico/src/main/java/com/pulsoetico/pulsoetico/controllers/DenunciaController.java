@@ -1,7 +1,11 @@
 package com.pulsoetico.pulsoetico.controllers;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,7 +19,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/publico/denuncias")
 public class DenunciaController {
 
     private final DenunciaService denunciaService;
@@ -24,10 +27,29 @@ public class DenunciaController {
         this.denunciaService = denunciaService;
     }
 
-    @SecurityRequirements
-    @PostMapping
-    public ResponseEntity<DenunciaResponse> registrar(@Valid @RequestBody DenunciaRequest request) {
-        var denuncia = denunciaService.registrarAnonimamente(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(DenunciaResponse.from(denuncia));
+    @PostMapping("/api/app/denuncias")
+    public ResponseEntity<DenunciaResponse> registrar(
+            @Valid @RequestBody DenunciaRequest request,
+            Authentication authentication) {
+
+        var denuncia = denunciaService.registrarAnonimamente(request, authentication);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(DenunciaResponse.from(denuncia));
+
+        
     }
+
+
+       @GetMapping("/api/painel/denuncias")
+    public ResponseEntity<List<DenunciaResponse>> listar() {
+
+        return ResponseEntity.ok(
+                denunciaService.listar()
+                        .stream()
+                        .map(DenunciaResponse::from)
+                        .toList()
+        );
+}
 }

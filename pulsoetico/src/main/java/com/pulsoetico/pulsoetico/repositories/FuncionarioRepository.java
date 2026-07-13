@@ -28,4 +28,6 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
               AND (f.desligadoEm IS NULL OR f.desligadoEm > :momento)
             """)
     long contarAtivosNoMomento(@Param("setor") Setor setor, @Param("momento") Instant momento);
+
+    Optional<Funcionario> findByEmail(String email);
 }

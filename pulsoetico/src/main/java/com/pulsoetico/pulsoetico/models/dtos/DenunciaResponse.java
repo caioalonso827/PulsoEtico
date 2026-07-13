@@ -14,7 +14,7 @@ public record DenunciaResponse(
         return new DenunciaResponse(
                 denuncia.getId(),
                 denuncia.getSetor().getId(),
-                "Denúncia registrada anonimamente",
+                denuncia.getDescricao(),
                 denuncia.getCriadoEm()
         );
     }
