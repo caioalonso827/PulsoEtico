@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Só precisa do setor — todo o resto (humor, horas extras) é calculado
  * automaticamente a partir dos dados já registrados (check-ins e ponto).
- * Rotatividade e denúncias vêm do Setor (indicadores manuais do RH).
+ * Rotatividade e denúncias também são calculadas automaticamente a partir dos registros do sistema.
  *
  * Esse endpoint existe pra permitir um "recalcular agora" manual; o cálculo
  * também roda sozinho, agendado, via RiskCalculationScheduler.

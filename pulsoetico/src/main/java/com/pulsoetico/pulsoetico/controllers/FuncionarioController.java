@@ -1,5 +1,6 @@
 package com.pulsoetico.pulsoetico.controllers;
 
+import com.pulsoetico.pulsoetico.models.dtos.DesligamentoFuncionarioRequest;
 import com.pulsoetico.pulsoetico.models.dtos.FuncionarioRequest;
 import com.pulsoetico.pulsoetico.models.dtos.FuncionarioResponse;
 import com.pulsoetico.pulsoetico.services.FuncionarioService;
@@ -24,6 +25,15 @@ public class FuncionarioController {
     public ResponseEntity<FuncionarioResponse> criar(@Valid @RequestBody FuncionarioRequest request) {
         var funcionario = funcionarioService.criar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(FuncionarioResponse.from(funcionario));
+    }
+
+    @PatchMapping("/{id}/desligamento")
+    public FuncionarioResponse desligar(
+            @PathVariable Long id,
+            @RequestBody(required = false) DesligamentoFuncionarioRequest request
+    ) {
+        var data = request != null ? request.desligadoEm() : null;
+        return FuncionarioResponse.from(funcionarioService.desligar(id, data));
     }
 
     @GetMapping

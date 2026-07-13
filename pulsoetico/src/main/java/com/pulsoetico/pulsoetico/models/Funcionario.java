@@ -77,6 +77,9 @@ public class Funcionario {
     @Column(name = "criado_em", nullable = false, updatable = false)
     private Instant criadoEm;
 
+    @Column(name = "desligado_em")
+    private Instant desligadoEm;
+
     @PrePersist
     protected void aoCriar() {
         this.criadoEm = Instant.now();

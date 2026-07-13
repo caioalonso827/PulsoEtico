@@ -1,5 +1,7 @@
 package com.pulsoetico.pulsoetico.models.dtos;
 
+import java.time.Instant;
+
 import com.pulsoetico.pulsoetico.models.Funcionario;
 
 public record FuncionarioResponse(
@@ -10,7 +12,9 @@ public record FuncionarioResponse(
         Funcionario.Papel papel,
         Long setorId,
         String setorNome,
-        boolean ativo
+        boolean ativo,
+        Instant criadoEm,
+        Instant desligadoEm
 ) {
     public static FuncionarioResponse from(Funcionario funcionario) {
         return new FuncionarioResponse(
@@ -21,7 +25,9 @@ public record FuncionarioResponse(
                 funcionario.getPapel(),
                 funcionario.getSetor().getId(),
                 funcionario.getSetor().getNome(),
-                funcionario.isAtivo()
+                funcionario.isAtivo(),
+                funcionario.getCriadoEm(),
+                funcionario.getDesligadoEm()
         );
     }
 }

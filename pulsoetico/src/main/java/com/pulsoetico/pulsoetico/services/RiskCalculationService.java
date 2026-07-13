@@ -23,8 +23,8 @@ import jakarta.persistence.EntityNotFoundException;
  * Fontes de cada componente:
  *   - Humor médio ................ CheckinHumor (check-ins dos últimos N dias)
  *   - Horas extras médias/semana .. RegistroPonto (calculado por HorasExtrasCalculatorService)
- *   - Rotatividade mensal ......... Setor.taxaRotatividadeMensal (indicador manual do RH)
- *   - Denúncias anônimas .......... Setor.quantidadeDenunciasAnonimasMensal (indicador manual do RH)
+ *   - Rotatividade mensal ......... desligamentos e quadro ativo de Funcionario
+ *   - Denúncias anônimas .......... registros de Denuncia dentro da janela
  *
  * Pesos (somam 100%): Humor 40% / Horas extras 30% / Rotatividade 20% / Denúncias 10%.
  */
@@ -48,19 +48,25 @@ public class RiskCalculationService {
     private final AvaliacaoRiscoRepository avaliacaoRiscoRepository;
     private final RecomendacaoService recommendationService;
     private final HorasExtrasCalculatorService horasExtrasCalculatorService;
+    private final FuncionarioService funcionarioService;
+    private final DenunciaService denunciaService;
 
     public RiskCalculationService(
             SetorRepository setorRepository,
             CheckinHumorRepository checkinHumorRepository,
             AvaliacaoRiscoRepository avaliacaoRiscoRepository,
             RecomendacaoService recommendationService,
-            HorasExtrasCalculatorService horasExtrasCalculatorService
+            HorasExtrasCalculatorService horasExtrasCalculatorService,
+            FuncionarioService funcionarioService,
+            DenunciaService denunciaService
     ) {
         this.setorRepository = setorRepository;
         this.checkinHumorRepository = checkinHumorRepository;
         this.avaliacaoRiscoRepository = avaliacaoRiscoRepository;
         this.recommendationService = recommendationService;
         this.horasExtrasCalculatorService = horasExtrasCalculatorService;
+        this.funcionarioService = funcionarioService;
+        this.denunciaService = denunciaService;
     }
 
     /** Dispara manualmente ("recalcular agora"), usado pelo endpoint POST /avaliacoes-risco. */
@@ -84,10 +90,8 @@ public class RiskCalculationService {
         double horasExtrasMediasSemana =
                 horasExtrasCalculatorService.calcularMediaHorasExtrasSemana(setor, desde, agora);
 
-        double taxaRotatividadeMensal = setor.getTaxaRotatividadeMensal() != null
-                ? setor.getTaxaRotatividadeMensal() : 0.0;
-        int quantidadeDenuncias = setor.getQuantidadeDenunciasAnonimasMensal() != null
-                ? setor.getQuantidadeDenunciasAnonimasMensal() : 0;
+        double taxaRotatividadeMensal = funcionarioService.calcularTaxaRotatividade(setor, desde, agora);
+        int quantidadeDenuncias = denunciaService.contarNoPeriodo(setor, desde, agora);
 
         double notaHumor = normalizarSeveridadeHumor(mediaSeveridadeHumor);
         double notaHorasExtras = normalizar(horasExtrasMediasSemana, TETO_HORAS_EXTRAS_SEMANA);

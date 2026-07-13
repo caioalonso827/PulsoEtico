@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -52,5 +53,39 @@ public class FuncionarioService {
 
     public List<Funcionario> listarTodos() {
         return funcionarioRepository.findAll();
+    }
+
+    @Transactional
+    public Funcionario desligar(Long funcionarioId, Instant dataDesligamento) {
+        Funcionario funcionario = funcionarioRepository.findById(funcionarioId)
+                .orElseThrow(() -> new EntityNotFoundException("Funcionário não encontrado: " + funcionarioId));
+
+        if (!funcionario.isAtivo() || funcionario.getDesligadoEm() != null) {
+            throw new IllegalArgumentException("O funcionário já está desligado");
+        }
+
+        Instant desligadoEm = dataDesligamento != null ? dataDesligamento : Instant.now();
+        if (desligadoEm.isBefore(funcionario.getCriadoEm())) {
+            throw new IllegalArgumentException("A data de desligamento não pode ser anterior à admissão");
+        }
+        if (desligadoEm.isAfter(Instant.now())) {
+            throw new IllegalArgumentException("A data de desligamento não pode estar no futuro");
+        }
+
+        funcionario.setAtivo(false);
+        funcionario.setDesligadoEm(desligadoEm);
+        return funcionarioRepository.save(funcionario);
+    }
+
+    public double calcularTaxaRotatividade(Setor setor, Instant inicio, Instant fim) {
+        long desligados = funcionarioRepository.countBySetorAndDesligadoEmBetween(setor, inicio, fim);
+        long ativosInicio = funcionarioRepository.contarAtivosNoMomento(setor, inicio);
+        long ativosFim = funcionarioRepository.contarAtivosNoMomento(setor, fim);
+        double mediaAtivos = (ativosInicio + ativosFim) / 2.0;
+
+        if (mediaAtivos <= 0) {
+            return 0.0;
+        }
+        return Math.round(((desligados / mediaAtivos) * 100.0) * 100.0) / 100.0;
     }
 }
