@@ -16,8 +16,13 @@ public record LoginResponse(
                 funcionario.getNomeCompleto(),
                 funcionario.getEmail(),
                 funcionario.getPapel(),
-                funcionario.getSetor().getId(),
-                funcionario.getSetor().getNome()
+                funcionario.getSetor() != null
+                ? funcionario.getSetor().getId()
+                : null,
+        
+        funcionario.getSetor() != null
+                ? funcionario.getSetor().getNome()
+                : null
         );
     }
 }

@@ -5,11 +5,15 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,7 +26,13 @@ import lombok.Setter;
  * para garantir que toda a análise de risco seja feita de forma agregada e anônima.
  */
 @Entity
-@Table(name = "setores")
+@Table(
+        name = "setores",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_setor_empresa_nome",
+                columnNames = {"empresa_id", "nome"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,8 +44,12 @@ public class Setor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String nome;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "empresa_id")
+    private Empresa empresa;
 
     /** Número aproximado de colaboradores no setor (usado para normalizar índices). */
     @Column(name = "quantidade_colaboradores")

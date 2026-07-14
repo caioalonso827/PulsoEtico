@@ -13,4 +13,7 @@ public interface RecomendacaoRepository extends JpaRepository<Recomendacao, Long
 
     /** Recomendações ainda não vistas pelo gestor/RH — o que aparece como "pendente" no painel. */
     List<Recomendacao> findByAvaliacaoRisco_Setor_IdAndReconhecidaFalse(Long setorId);
+
+    /** Recomendações mais recentes de qualquer setor — pro feed de alertas do dashboard. */
+    List<Recomendacao> findTop20ByOrderByCriadoEmDesc();
 }

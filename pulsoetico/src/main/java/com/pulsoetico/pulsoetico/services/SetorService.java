@@ -23,7 +23,7 @@ public class SetorService {
 
     @Transactional
     public Setor criar(SetorRequest request) {
-        if (setorRepository.existsByNome(request.nome())) {
+        if (setorRepository.existsByNomeAndEmpresaIsNull(request.nome())) {
             throw new IllegalArgumentException("Já existe um setor com o nome: " + request.nome());
         }
         Setor setor = Setor.builder()

@@ -76,8 +76,11 @@ public class HorasExtrasCalculatorService {
      * Primeiro pareia ENTRADA→SAIDA (registros incompletos são ignorados),
      * depois agrupa as horas trabalhadas por dia (data da ENTRADA) e aplica
      * a regra de excedente correspondente ao dia da semana.
+     *
+     * Não é mais privado: reaproveitado pelo JornadaAnalyticsService pra
+     * somar horas extras da empresa toda no mês (em vez de só por setor).
      */
-    private double calcularHorasExtrasFuncionario(List<RegistroPonto> registros) {
+    double calcularHorasExtrasFuncionario(List<RegistroPonto> registros) {
         Map<LocalDate, Double> horasTrabalhadasPorDia = calcularHorasTrabalhadasPorDia(registros);
 
         double totalHorasExtras = 0.0;
@@ -106,8 +109,12 @@ public class HorasExtrasCalculatorService {
      * Pareia ENTRADA→SAIDA em ordem cronológica e agrupa o tempo trabalhado
      * por dia, usando a data da ENTRADA como referência do dia (ex: um turno
      * que vira a noite conta inteiro no dia em que começou).
+     *
+     * Não é mais privado: o JornadaAnalyticsService reaproveita essa mesma
+     * lógica de pareamento pros indicadores da tela de Ponto & Jornada,
+     * pra não duplicar essa regra em dois lugares.
      */
-    private Map<LocalDate, Double> calcularHorasTrabalhadasPorDia(List<RegistroPonto> registros) {
+    Map<LocalDate, Double> calcularHorasTrabalhadasPorDia(List<RegistroPonto> registros) {
         List<RegistroPonto> ordenados = registros.stream()
                 .sorted(Comparator.comparing(RegistroPonto::getHorario))
                 .toList();

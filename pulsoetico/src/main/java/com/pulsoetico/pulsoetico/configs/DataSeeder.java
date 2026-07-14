@@ -40,7 +40,7 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        Setor setorAdmin = setorRepository.findByNome("Recursos Humanos")
+        Setor setorAdmin = setorRepository.findFirstByNomeAndEmpresaIsNull("Recursos Humanos")
                 .orElseGet(() -> setorRepository.save(
                         Setor.builder().nome("Recursos Humanos").quantidadeColaboradores(12).build()));
 

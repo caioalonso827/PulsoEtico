@@ -1,6 +1,7 @@
 package com.pulsoetico.pulsoetico.repositories;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +13,12 @@ import com.pulsoetico.pulsoetico.models.Setor;
 
 public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> {
 
-    @Query("SELECT f FROM Funcionario f JOIN FETCH f.setor WHERE f.email = :email")
+    @Query("""
+      SELECT f
+      FROM Funcionario f
+      LEFT JOIN FETCH f.setor
+      WHERE LOWER(f.email) = LOWER(:email)
+      """)
     Optional<Funcionario> findByEmailWithSetor(@Param("email") String email);
 
     boolean existsByEmail(String email);
@@ -30,4 +36,11 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     long contarAtivosNoMomento(@Param("setor") Setor setor, @Param("momento") Instant momento);
 
     Optional<Funcionario> findByEmail(String email);
+<<<<<<< HEAD
+=======
+
+    long countByAtivoTrue();
+
+    List<Funcionario> findByAtivoTrue();
+>>>>>>> 3c99e66 (Update Brabo)
 }

@@ -1,6 +1,10 @@
 package com.pulsoetico.pulsoetico.services;
 
 import java.time.Instant;
+<<<<<<< HEAD
+=======
+import java.time.temporal.ChronoUnit;
+>>>>>>> 3c99e66 (Update Brabo)
 import java.util.List;
 
 import org.springframework.security.core.Authentication;
@@ -19,6 +23,11 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class DenunciaService {
 
+<<<<<<< HEAD
+=======
+    private static final int HORAS_LIMITE_RESPOSTA = 48;
+
+>>>>>>> 3c99e66 (Update Brabo)
     private final DenunciaRepository denunciaRepository;
     private final FuncionarioRepository funcionarioRepository;
 
@@ -72,6 +81,33 @@ public class DenunciaService {
         return quantidade > Integer.MAX_VALUE
                 ? Integer.MAX_VALUE
                 : (int) quantidade;
+<<<<<<< HEAD
+=======
+    }
+
+    /** Últimas denúncias (qualquer setor), pro feed de alertas do gestor. */
+    public List<Denuncia> listarRecentes() {
+        return denunciaRepository.findTop20ByOrderByCriadoEmDesc();
+    }
+
+    public long contarAbertas() {
+        return denunciaRepository.countByStatus(Denuncia.StatusDenuncia.ABERTA);
+    }
+
+    /** Abertas há mais de 48h sem resposta — o alerta "sem resposta há 48h". */
+    public long contarSemRespostaAlemDoLimite() {
+        Instant limite = Instant.now().minus(HORAS_LIMITE_RESPOSTA, ChronoUnit.HOURS);
+        return denunciaRepository.countByStatusAndCriadoEmBefore(Denuncia.StatusDenuncia.ABERTA, limite);
+    }
+
+    @Transactional
+    public Denuncia marcarComoRespondida(Long id) {
+        Denuncia denuncia = denunciaRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Denúncia não encontrada: " + id));
+        denuncia.setStatus(Denuncia.StatusDenuncia.RESPONDIDA);
+        denuncia.setRespondidaEm(Instant.now());
+        return denunciaRepository.save(denuncia);
+>>>>>>> 3c99e66 (Update Brabo)
     }
 
     private String normalizarDescricao(String descricao) {

@@ -1,14 +1,15 @@
 package com.pulsoetico.pulsoetico.controllers;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.pulsoetico.pulsoetico.models.dtos.CadastroRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginResponse;
 import com.pulsoetico.pulsoetico.services.AuthService;
-
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 
@@ -28,4 +29,12 @@ public class AuthController {
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    @PostMapping("/cadastro")
+    public ResponseEntity<LoginResponse> cadastrar(
+        @Valid @RequestBody CadastroRequest request
+) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(authService.cadastrar(request));
+}
 }

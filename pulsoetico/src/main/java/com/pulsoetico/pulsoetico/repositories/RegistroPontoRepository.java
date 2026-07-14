@@ -24,4 +24,7 @@ public interface RegistroPontoRepository extends JpaRepository<RegistroPonto, Lo
      * agregado por setor (nunca exposto por pessoa nos relatórios de risco).
      */
     List<RegistroPonto> findByFuncionario_SetorAndHorarioBetween(Setor setor, Instant inicio, Instant fim);
+
+    /** Todos os registros de ponto da empresa toda (qualquer setor) num período. */
+    List<RegistroPonto> findByHorarioBetween(Instant inicio, Instant fim);
 }
