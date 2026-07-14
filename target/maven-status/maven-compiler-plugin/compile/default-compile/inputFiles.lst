@@ -6,7 +6,8 @@
 /home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/AvaliacaoRiscoController.java
 /home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/CheckinHumorController.java
 /home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/DashboardController.java
-/home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/DenunciaController.java
+/home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/DenunciaAppController.java
+/home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/DenunciaPainelController.java
 /home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/EmpresaController.java
 /home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/FuncionarioController.java
 /home/cacaio/Documents/PulsoEtico/PulsoEtico/src/main/java/com/pulsoetico/pulsoetico/controllers/JornadaController.java

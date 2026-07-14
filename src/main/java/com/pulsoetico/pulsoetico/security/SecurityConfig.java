@@ -60,9 +60,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/empresas/**")
                         .authenticated()
 
-                        // Denúncias
-                        .requestMatchers("/api/publico/denuncias/**")
-                        .hasAnyRole("TRABALHADOR", "GESTOR")
 
                         // Painel administrativo
                         .requestMatchers("/api/painel/**")

@@ -10,103 +10,160 @@ import org.springframework.transaction.annotation.Transactional;
 import com.pulsoetico.pulsoetico.models.Denuncia;
 import com.pulsoetico.pulsoetico.models.Funcionario;
 import com.pulsoetico.pulsoetico.models.MembroEmpresa;
+import com.pulsoetico.pulsoetico.models.Permissoes;
 import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.dtos.DenunciaRequest;
 import com.pulsoetico.pulsoetico.repositories.DenunciaRepository;
-import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
-/**
- * Correção de bug: o setor da denúncia vem do MembroEmpresa (empresa ativa
- * do token + funcionário), não de Funcionario.getSetor(). Mesma razão do
- * MoodCheckinService — Funcionario.setor é um campo legado de quando só
- * existia uma empresa por pessoa.
- */
 @Service
 public class DenunciaService {
 
     private static final int HORAS_LIMITE_RESPOSTA = 48;
 
     private final DenunciaRepository denunciaRepository;
-    private final MembroEmpresaRepository membroEmpresaRepository;
+    private final AutorizacaoEmpresaService autorizacao;
 
     public DenunciaService(
             DenunciaRepository denunciaRepository,
-            MembroEmpresaRepository membroEmpresaRepository) {
-
+            AutorizacaoEmpresaService autorizacao
+    ) {
         this.denunciaRepository = denunciaRepository;
-        this.membroEmpresaRepository = membroEmpresaRepository;
+        this.autorizacao = autorizacao;
     }
 
     @Transactional
     public Denuncia registrarAnonimamente(
             DenunciaRequest request,
             Funcionario funcionarioLogado,
-            Long empresaIdAtual) {
-
-        if (empresaIdAtual == null) {
-            throw new IllegalStateException(
-                    "Nenhuma empresa ativa no token — selecione uma empresa antes de denunciar");
-        }
-
-        MembroEmpresa membro = membroEmpresaRepository
-                .findByEmpresaIdAndFuncionarioIdAndAtivoTrue(empresaIdAtual, funcionarioLogado.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Você não é membro ativo dessa empresa"));
+            Long empresaId
+    ) {
+        MembroEmpresa membro = autorizacao.exigirMembro(
+                empresaId,
+                funcionarioLogado
+        );
 
         Setor setor = membro.getSetor();
 
         if (setor == null) {
             throw new EntityNotFoundException(
-                    "Você ainda não foi colocado em um setor nessa empresa — fale com o administrador");
+                    "Você ainda não possui setor nesta empresa"
+            );
         }
 
         Denuncia denuncia = Denuncia.builder()
                 .setor(setor)
                 .tipo(request.tipo().trim())
-                .descricao(normalizarDescricao(request.descricao()))
+                .descricao(
+                        normalizarDescricao(
+                                request.descricao()
+                        )
+                )
                 .build();
 
         return denunciaRepository.save(denuncia);
     }
 
-    public int contarNoPeriodo(Setor setor, Instant inicio, Instant fim) {
-        long quantidade =
-                denunciaRepository.countBySetorAndCriadoEmBetween(
+    @Transactional(readOnly = true)
+    public List<Denuncia> listarRecentesDaEmpresa(
+            Long empresaId,
+            Funcionario usuario
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.GERENCIAR_DENUNCIAS
+        );
+
+        return denunciaRepository
+                .findTop20BySetor_Empresa_IdOrderByCriadoEmDesc(
+                        empresaId
+                );
+    }
+
+    @Transactional
+    public Denuncia marcarComoRespondida(
+            Long empresaId,
+            Long denunciaId,
+            Funcionario usuario
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.GERENCIAR_DENUNCIAS
+        );
+
+        Denuncia denuncia = denunciaRepository
+                .findByIdAndSetor_Empresa_Id(
+                        denunciaId,
+                        empresaId
+                )
+                .orElseThrow(() ->
+                        new EntityNotFoundException(
+                                "Denúncia não encontrada nesta empresa"
+                        )
+                );
+
+        denuncia.setStatus(
+                Denuncia.StatusDenuncia.RESPONDIDA
+        );
+
+        denuncia.setRespondidaEm(
+                Instant.now()
+        );
+
+        return denunciaRepository.save(denuncia);
+    }
+
+    public int contarNoPeriodo(
+            Setor setor,
+            Instant inicio,
+            Instant fim
+    ) {
+        long quantidade = denunciaRepository
+                .countBySetorAndCriadoEmBetween(
                         setor,
                         inicio,
-                        fim);
+                        fim
+                );
 
         return quantidade > Integer.MAX_VALUE
                 ? Integer.MAX_VALUE
                 : (int) quantidade;
     }
 
-    /** Últimas denúncias (qualquer setor), pro feed de alertas do gestor. */
+    /*
+     * Mantido porque o DashboardService atual ainda utiliza este método.
+     * O dashboard será corrigido posteriormente para usar empresaId.
+     */
     public List<Denuncia> listarRecentes() {
-        return denunciaRepository.findTop20ByOrderByCriadoEmDesc();
+        return denunciaRepository
+                .findTop20ByOrderByCriadoEmDesc();
     }
 
     public long contarAbertas() {
-        return denunciaRepository.countByStatus(Denuncia.StatusDenuncia.ABERTA);
+        return denunciaRepository.countByStatus(
+                Denuncia.StatusDenuncia.ABERTA
+        );
     }
 
-    /** Abertas há mais de 48h sem resposta — o alerta "sem resposta há 48h". */
     public long contarSemRespostaAlemDoLimite() {
-        Instant limite = Instant.now().minus(HORAS_LIMITE_RESPOSTA, ChronoUnit.HOURS);
-        return denunciaRepository.countByStatusAndCriadoEmBefore(Denuncia.StatusDenuncia.ABERTA, limite);
+        Instant limite = Instant.now().minus(
+                HORAS_LIMITE_RESPOSTA,
+                ChronoUnit.HOURS
+        );
+
+        return denunciaRepository
+                .countByStatusAndCriadoEmBefore(
+                        Denuncia.StatusDenuncia.ABERTA,
+                        limite
+                );
     }
 
-    @Transactional
-    public Denuncia marcarComoRespondida(Long id) {
-        Denuncia denuncia = denunciaRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Denúncia não encontrada: " + id));
-        denuncia.setStatus(Denuncia.StatusDenuncia.RESPONDIDA);
-        denuncia.setRespondidaEm(Instant.now());
-        return denunciaRepository.save(denuncia);
-    }
-
-    private String normalizarDescricao(String descricao) {
+    private String normalizarDescricao(
+            String descricao
+    ) {
         if (descricao == null || descricao.isBlank()) {
             return null;
         }
