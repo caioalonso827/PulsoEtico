@@ -2,15 +2,17 @@ package com.pulsoetico.pulsoetico.services;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pulsoetico.pulsoetico.models.CodigoVerificacao;
 import com.pulsoetico.pulsoetico.repositories.CodigoVerificacaoRepository;
+import com.resend.Resend;
+import com.resend.core.exception.ResendException;
+import com.resend.services.emails.model.CreateEmailOptions;
 
 @Service
 public class CodigoVerificacaoService {
@@ -18,18 +20,18 @@ public class CodigoVerificacaoService {
     private static final long TEMPO_EXPIRACAO_SEGUNDOS = 5 * 60;
 
     private final CodigoVerificacaoRepository codigoRepository;
-    private final JavaMailSender mailSender;
     private final SecureRandom secureRandom;
-
-    @Value("${spring.mail.username}")
-    private String emailRemetente;
+    private final Resend resend;
+    private final String emailRemetente;
 
     public CodigoVerificacaoService(
             CodigoVerificacaoRepository codigoRepository,
-            JavaMailSender mailSender) {
+            @Value("${resend.api-key}") String apiKey,
+            @Value("${resend.from}") String emailRemetente) {
         this.codigoRepository = codigoRepository;
-        this.mailSender = mailSender;
         this.secureRandom = new SecureRandom();
+        this.resend = new Resend(apiKey);
+        this.emailRemetente = emailRemetente;
     }
 
     @Transactional
@@ -53,7 +55,9 @@ public class CodigoVerificacaoService {
     }
 
     @Transactional
-    public void validarCodigo(String email, String codigoInformado) {
+    public void validarCodigo(
+            String email,
+            String codigoInformado) {
         String emailNormalizado = normalizarEmail(email);
         String codigoNormalizado = normalizarCodigo(codigoInformado);
 
@@ -72,7 +76,10 @@ public class CodigoVerificacaoService {
                     "Código expirado. Solicite um novo código");
         }
 
-        if (!codigoVerificacao.getCodigo().equals(codigoNormalizado)) {
+        if (!codigoVerificacao
+                .getCodigo()
+                .equals(codigoNormalizado)) {
+
             throw new IllegalArgumentException(
                     "Código de verificação inválido");
         }
@@ -81,23 +88,51 @@ public class CodigoVerificacaoService {
         codigoRepository.save(codigoVerificacao);
     }
 
+    private void enviarEmail(
+            String emailDestino,
+            String codigo) {
+        CreateEmailOptions parametros = CreateEmailOptions.builder()
+                .from(emailRemetente)
+                .to(emailDestino)
+                .subject("Código de verificação - Pulso Ético")
+                .html(
+                        """
+                                <div style="font-family: Arial, sans-serif;">
+                                    <h2>Pulso Ético</h2>
+
+                                    <p>Seu código de verificação é:</p>
+
+                                    <div style="
+                                        font-size: 32px;
+                                        font-weight: bold;
+                                        letter-spacing: 8px;
+                                        margin: 24px 0;
+                                    ">
+                                        %s
+                                    </div>
+
+                                    <p>Este código expira em 5 minutos.</p>
+
+                                    <p>
+                                        Se você não tentou entrar,
+                                        ignore esta mensagem.
+                                    </p>
+                                </div>
+                                """.formatted(codigo))
+                .build();
+
+        try {
+            resend.emails().send(parametros);
+        } catch (ResendException ex) {
+            throw new IllegalStateException(
+                    "Não foi possível enviar o código por e-mail",
+                    ex);
+        }
+    }
+
     private String gerarCodigo() {
         int numero = secureRandom.nextInt(1_000_000);
         return String.format("%06d", numero);
-    }
-
-    private void enviarEmail(String emailDestino, String codigo) {
-        SimpleMailMessage mensagem = new SimpleMailMessage();
-
-        mensagem.setFrom(emailRemetente);
-        mensagem.setTo(emailDestino);
-        mensagem.setSubject("Código de verificação - Pulso Ético");
-        mensagem.setText(
-                "Seu código de verificação é: " + codigo
-                        + "\n\nO código expira em 5 minutos."
-                        + "\n\nSe você não tentou entrar, ignore esta mensagem.");
-
-        mailSender.send(mensagem);
     }
 
     private String normalizarEmail(String email) {
@@ -106,11 +141,15 @@ public class CodigoVerificacaoService {
                     "O email é obrigatório");
         }
 
-        return email.trim().toLowerCase();
+        return email
+                .trim()
+                .toLowerCase(Locale.ROOT);
     }
 
     private String normalizarCodigo(String codigo) {
-        if (codigo == null || !codigo.trim().matches("\\d{6}")) {
+        if (codigo == null
+                || !codigo.trim().matches("\\d{6}")) {
+
             throw new IllegalArgumentException(
                     "O código deve conter 6 dígitos");
         }
