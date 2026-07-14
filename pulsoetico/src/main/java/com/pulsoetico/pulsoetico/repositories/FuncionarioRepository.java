@@ -36,11 +36,8 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Long> 
     long contarAtivosNoMomento(@Param("setor") Setor setor, @Param("momento") Instant momento);
 
     Optional<Funcionario> findByEmail(String email);
-<<<<<<< HEAD
-=======
 
     long countByAtivoTrue();
 
     List<Funcionario> findByAtivoTrue();
->>>>>>> 3c99e66 (Update Brabo)
 }

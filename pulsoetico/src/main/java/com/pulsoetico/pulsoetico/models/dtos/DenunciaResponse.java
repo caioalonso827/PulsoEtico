@@ -21,14 +21,10 @@ public record DenunciaResponse(
         return new DenunciaResponse(
                 denuncia.getId(),
                 denuncia.getSetor().getId(),
-<<<<<<< HEAD
-                denuncia.getDescricao(),
-=======
                 denuncia.getSetor().getNome(),
                 denuncia.getTipo(),
                 denuncia.getDescricao(),
                 denuncia.getStatus(),
->>>>>>> 3c99e66 (Update Brabo)
                 denuncia.getCriadoEm()
         );
     }

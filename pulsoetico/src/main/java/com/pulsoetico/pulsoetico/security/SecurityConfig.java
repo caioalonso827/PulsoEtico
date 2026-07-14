@@ -17,10 +17,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-<<<<<<< HEAD
-import org.springframework.http.HttpMethod;
-=======
->>>>>>> 3c99e66 (Update Brabo)
 
 @Configuration
 @EnableWebSecurity
@@ -48,15 +44,12 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
 
-<<<<<<< HEAD
-=======
                         .requestMatchers("/api/empresas/**")
                         .authenticated()
 
                         .requestMatchers("/api/publico/denuncias/**")
                         .hasAnyRole("TRABALHADOR", "GESTOR")
 
->>>>>>> 3c99e66 (Update Brabo)
                         .requestMatchers("/api/painel/**")
                         .hasRole("GESTOR")
 

@@ -1,10 +1,7 @@
 package com.pulsoetico.pulsoetico.services;
 
 import java.time.Instant;
-<<<<<<< HEAD
-=======
 import java.time.temporal.ChronoUnit;
->>>>>>> 3c99e66 (Update Brabo)
 import java.util.List;
 
 import org.springframework.security.core.Authentication;
@@ -23,11 +20,8 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class DenunciaService {
 
-<<<<<<< HEAD
-=======
     private static final int HORAS_LIMITE_RESPOSTA = 48;
 
->>>>>>> 3c99e66 (Update Brabo)
     private final DenunciaRepository denunciaRepository;
     private final FuncionarioRepository funcionarioRepository;
 
@@ -81,8 +75,6 @@ public class DenunciaService {
         return quantidade > Integer.MAX_VALUE
                 ? Integer.MAX_VALUE
                 : (int) quantidade;
-<<<<<<< HEAD
-=======
     }
 
     /** Últimas denúncias (qualquer setor), pro feed de alertas do gestor. */
@@ -107,7 +99,6 @@ public class DenunciaService {
         denuncia.setStatus(Denuncia.StatusDenuncia.RESPONDIDA);
         denuncia.setRespondidaEm(Instant.now());
         return denunciaRepository.save(denuncia);
->>>>>>> 3c99e66 (Update Brabo)
     }
 
     private String normalizarDescricao(String descricao) {
@@ -116,10 +107,5 @@ public class DenunciaService {
         }
 
         return descricao.trim();
-    }
-
-    @Transactional(readOnly = true)
-    public List<Denuncia> listar() {
-        return denunciaRepository.findAll();
     }
 }
