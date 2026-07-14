@@ -2,6 +2,7 @@ package com.pulsoetico.pulsoetico.controllers;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import com.pulsoetico.pulsoetico.models.dtos.LoginPendenteResponse;
 import com.pulsoetico.pulsoetico.models.dtos.LoginRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginResponse;
 import com.pulsoetico.pulsoetico.models.dtos.VerificarCodigoRequest;
+import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
 import com.pulsoetico.pulsoetico.services.AuthService;
 
 import jakarta.validation.Valid;
@@ -31,6 +33,12 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(
                 authService.login(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal FuncionarioUserDetails principal) {
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/verificar-codigo")
