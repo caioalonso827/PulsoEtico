@@ -1,13 +1,18 @@
-FROM eclipse-temurin:21-jdk
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
-COPY . .
+COPY pom.xml .
+COPY src ./src
 
-RUN chmod +x mvnw
+RUN mvn clean package -DskipTests
 
-RUN ./mvnw clean package -DskipTests
+FROM eclipse-temurin:21-jre
 
-EXPOSE 8080
+WORKDIR /app
 
-CMD ["java","-jar","target/pulsoetico-0.0.1-SNAPSHOT.jar"]
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 10000
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
