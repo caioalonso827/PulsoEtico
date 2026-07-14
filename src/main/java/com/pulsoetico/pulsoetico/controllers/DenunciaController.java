@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,12 +15,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pulsoetico.pulsoetico.models.dtos.DenunciaRequest;
 import com.pulsoetico.pulsoetico.models.dtos.DenunciaResponse;
+import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
 import com.pulsoetico.pulsoetico.services.DenunciaService;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 
 @RestController
+@RequestMapping("/api/app/empresas/{empresaId}/denuncias")
 public class DenunciaController {
 
     private final DenunciaService denunciaService;
@@ -30,19 +31,22 @@ public class DenunciaController {
     }
 
     /** Lado do TRABALHADOR: registra uma denúncia anônima. */
-    @SecurityRequirements
-    @PostMapping("/api/publico/denuncias")
-    public ResponseEntity<DenunciaResponse> registrar(
-            @Valid @RequestBody DenunciaRequest request,
-            Authentication authentication) {
+    @PostMapping
+public ResponseEntity<DenunciaResponse> registrar(
+        @PathVariable Long empresaId,
+        @Valid @RequestBody DenunciaRequest request,
+        @AuthenticationPrincipal FuncionarioUserDetails principal
+) {
+    var denuncia = denunciaService.registrarAnonimamente(
+            request,
+            principal.getFuncionario(),
+            empresaId
+    );
 
-        var denuncia = denunciaService.registrarAnonimamente(request, authentication);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(DenunciaResponse.from(denuncia));
-    }
-
+    return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(DenunciaResponse.from(denuncia));
+}
     /** Lado do GESTOR: lista as denúncias mais recentes (qualquer setor). */
     @GetMapping("/api/painel/denuncias")
     public List<DenunciaResponse> listarRecentes() {

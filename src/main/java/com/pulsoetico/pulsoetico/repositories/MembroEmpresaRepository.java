@@ -30,6 +30,12 @@ public interface MembroEmpresaRepository
             Long funcionarioId
     );
 
+    /** Empresa "padrão" pra logar quando o usuário não escolheu nenhuma explicitamente. */
+    Optional<MembroEmpresa>
+    findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(
+            Long funcionarioId
+    );
+
     List<MembroEmpresa>
     findAllByEmpresaIdAndAtivoTrueOrderByFuncionarioNomeCompletoAsc(
             Long empresaId

@@ -7,13 +7,14 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/app/checkins-humor")
+@RequestMapping("/api/app/empresas/{empresaId}/checkins-humor")
 public class CheckinHumorController {
 
     private final MoodCheckinService moodCheckinService;
@@ -22,12 +23,20 @@ public class CheckinHumorController {
         this.moodCheckinService = moodCheckinService;
     }
 
-    @PostMapping
-    public ResponseEntity<Void> registrar(
-            @AuthenticationPrincipal FuncionarioUserDetails usuario,
-            @Valid @RequestBody CheckinHumorRequest request
-    ) {
-        moodCheckinService.registrar(usuario.getFuncionario(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
-    }
+@PostMapping
+public ResponseEntity<Void> registrar(
+        @PathVariable Long empresaId,
+        @AuthenticationPrincipal FuncionarioUserDetails principal,
+        @Valid @RequestBody CheckinHumorRequest request) 
+{
+    moodCheckinService.registrar(
+            principal.getFuncionario(),
+            empresaId,
+            request
+    );
+
+    return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .build();
+}
 }

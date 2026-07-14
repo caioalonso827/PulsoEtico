@@ -88,17 +88,33 @@ public class EmpresaController {
         );
     }
 
+    /**
+     * Correção de bug: antes descartava o token novo que o service gera
+     * (a pessoa perde a empresa ativa, então o token muda) e devolvia só
+     * 204 sem corpo. Agora devolve 200 com o token atualizado, senão o
+     * front fica preso usando um token que já não reflete mais a saída.
+     */
     @DeleteMapping("/{empresaId}/sair")
-    public ResponseEntity<Void> sair(
+    public VinculoEmpresaResponse sair(
             @PathVariable Long empresaId,
             @AuthenticationPrincipal FuncionarioUserDetails principal
     ) {
-        empresaService.sair(
+        return empresaService.sair(
                 empresaId,
                 principal.getFuncionario()
         );
+    }
 
-        return ResponseEntity.noContent().build();
+    /** Troca a empresa ativa pra outra que a pessoa já participa (sem precisar logar de novo). */
+    @PostMapping("/{empresaId}/selecionar")
+    public VinculoEmpresaResponse selecionar(
+            @PathVariable Long empresaId,
+            @AuthenticationPrincipal FuncionarioUserDetails principal
+    ) {
+        return empresaService.selecionar(
+                empresaId,
+                principal.getFuncionario()
+        );
     }
 
     @PostMapping("/{empresaId}/codigo-convite")

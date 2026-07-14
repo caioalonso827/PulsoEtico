@@ -120,10 +120,10 @@ public VinculoEmpresaResponse criar(
                     .build()
     );
 
-    criador.setPapel(Funcionario.Papel.GESTOR);
-    funcionarioRepository.save(criador);
-
-    String novoToken = jwtService.gerarToken(criador);
+    // Correção de bug: não mutamos mais Funcionario.papel globalmente.
+    // O papel efetivo (GESTOR, nesse caso, por ser proprietário) é calculado
+    // pelo JwtService a partir do próprio MembroEmpresa/Cargo dessa empresa.
+    String novoToken = jwtService.gerarToken(criador, proprietario);
 
     return new VinculoEmpresaResponse(
             EmpresaResponse.from(
@@ -291,10 +291,10 @@ public VinculoEmpresaResponse entrarPorCodigo(
 
     membroRepository.save(membro);
 
-    usuario.setPapel(Funcionario.Papel.TRABALHADOR);
-    funcionarioRepository.save(usuario);
-
-    String novoToken = jwtService.gerarToken(usuario);
+    // Correção de bug: antes gerava o token SEM passar o membro, então o
+    // token nem sabia que a pessoa tinha acabado de entrar nessa empresa.
+    // Também não mutamos mais Funcionario.papel globalmente.
+    String novoToken = jwtService.gerarToken(usuario, membro);
 
     empresa.setCodigoConvite(null);
     empresa.setCodigoGeradoEm(null);
@@ -324,13 +324,37 @@ public VinculoEmpresaResponse sair(
     membro.setAtivo(false);
     membroRepository.save(membro);
 
-    usuario.setPapel(Funcionario.Papel.USUARIO);
-    funcionarioRepository.save(usuario);
-
+    // Correção de bug: não mutamos mais Funcionario.papel globalmente — isso
+    // afetaria o acesso da pessoa em QUALQUER OUTRA empresa que ela participe.
+    // O token pós-saída simplesmente não tem mais empresa ativa (papel USUARIO);
+    // se a pessoa participar de outras empresas, o front deve chamar
+    // POST /api/empresas/{id}/selecionar pra continuar usando outra.
     String novoToken = jwtService.gerarToken(usuario);
 
     return new VinculoEmpresaResponse(
             null,
+            novoToken
+    );
+}
+
+/**
+ * Emite um novo token com uma empresa diferente como ativa, pra quem já é
+ * membro dela (não confundir com entrarPorCodigo, que é pra ENTRAR numa
+ * empresa nova). Existe porque o login só escolhe uma empresa padrão
+ * automaticamente — se a pessoa participa de mais de uma, ela precisa
+ * de um jeito de trocar sem digitar a senha de novo.
+ */
+@Transactional(readOnly = true)
+public VinculoEmpresaResponse selecionar(
+        Long empresaId,
+        Funcionario usuario
+) {
+    MembroEmpresa membro = autorizacao.exigirMembro(empresaId, usuario);
+
+    String novoToken = jwtService.gerarToken(usuario, membro);
+
+    return new VinculoEmpresaResponse(
+            converterEmpresa(membro),
             novoToken
     );
 }

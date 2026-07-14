@@ -16,6 +16,7 @@ import com.pulsoetico.pulsoetico.models.dtos.LoginRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginResponse;
 import com.pulsoetico.pulsoetico.models.dtos.VerificarCodigoRequest;
 import com.pulsoetico.pulsoetico.repositories.FuncionarioRepository;
+import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 import com.pulsoetico.pulsoetico.security.JwtService;
 
 import jakarta.transaction.Transactional;
@@ -25,6 +26,7 @@ public class AuthService {
 
         private final AuthenticationManager authenticationManager;
         private final FuncionarioRepository funcionarioRepository;
+        private final MembroEmpresaRepository membroEmpresaRepository;
         private final JwtService jwtService;
         private final PasswordEncoder passwordEncoder;
         private final CodigoVerificacaoService codigoVerificacaoService;
@@ -32,11 +34,13 @@ public class AuthService {
         public AuthService(
                         AuthenticationManager authenticationManager,
                         FuncionarioRepository funcionarioRepository,
+                        MembroEmpresaRepository membroEmpresaRepository,
                         JwtService jwtService,
                         PasswordEncoder passwordEncoder,
                         CodigoVerificacaoService codigoVerificacaoService) {
                 this.authenticationManager = authenticationManager;
                 this.funcionarioRepository = funcionarioRepository;
+                this.membroEmpresaRepository = membroEmpresaRepository;
                 this.jwtService = jwtService;
                 this.passwordEncoder = passwordEncoder;
                 this.codigoVerificacaoService = codigoVerificacaoService;
@@ -80,7 +84,14 @@ public class AuthService {
                                 .orElseThrow(() -> new BadCredentialsException(
                                                 "Usuário não encontrado"));
 
-                String token = jwtService.gerarToken(funcionario);
+                // Se a pessoa já participa de alguma empresa, o token já sai
+                // com essa empresa como ativa (a mais antiga, por padrão).
+                // Se ela participa de várias, o front deve deixar trocar
+                // depois via POST /api/empresas/{id}/selecionar.
+                String token = membroEmpresaRepository
+                                .findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(funcionario.getId())
+                                .map(membro -> jwtService.gerarToken(funcionario, membro))
+                                .orElseGet(() -> jwtService.gerarToken(funcionario));
 
                 return LoginResponse.de(
                                 token,

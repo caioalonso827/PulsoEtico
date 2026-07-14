@@ -4,56 +4,61 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pulsoetico.pulsoetico.models.Denuncia;
 import com.pulsoetico.pulsoetico.models.Funcionario;
+import com.pulsoetico.pulsoetico.models.MembroEmpresa;
 import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.dtos.DenunciaRequest;
 import com.pulsoetico.pulsoetico.repositories.DenunciaRepository;
-import com.pulsoetico.pulsoetico.repositories.FuncionarioRepository;
+import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
+/**
+ * Correção de bug: o setor da denúncia vem do MembroEmpresa (empresa ativa
+ * do token + funcionário), não de Funcionario.getSetor(). Mesma razão do
+ * MoodCheckinService — Funcionario.setor é um campo legado de quando só
+ * existia uma empresa por pessoa.
+ */
 @Service
 public class DenunciaService {
 
     private static final int HORAS_LIMITE_RESPOSTA = 48;
 
     private final DenunciaRepository denunciaRepository;
-    private final FuncionarioRepository funcionarioRepository;
+    private final MembroEmpresaRepository membroEmpresaRepository;
 
     public DenunciaService(
             DenunciaRepository denunciaRepository,
-            FuncionarioRepository funcionarioRepository) {
+            MembroEmpresaRepository membroEmpresaRepository) {
 
         this.denunciaRepository = denunciaRepository;
-        this.funcionarioRepository = funcionarioRepository;
+        this.membroEmpresaRepository = membroEmpresaRepository;
     }
 
     @Transactional
     public Denuncia registrarAnonimamente(
             DenunciaRequest request,
-            Authentication authentication) {
+            Funcionario funcionarioLogado,
+            Long empresaIdAtual) {
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException("Usuário não autenticado");
+        if (empresaIdAtual == null) {
+            throw new IllegalStateException(
+                    "Nenhuma empresa ativa no token — selecione uma empresa antes de denunciar");
         }
 
-        String email = authentication.getName();
+        MembroEmpresa membro = membroEmpresaRepository
+                .findByEmpresaIdAndFuncionarioIdAndAtivoTrue(empresaIdAtual, funcionarioLogado.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Você não é membro ativo dessa empresa"));
 
-        Funcionario funcionario = funcionarioRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "Funcionário não encontrado para o usuário autenticado"));
-
-        Setor setor = funcionario.getSetor();
+        Setor setor = membro.getSetor();
 
         if (setor == null) {
             throw new EntityNotFoundException(
-                    "O funcionário autenticado não possui setor");
+                    "Você ainda não foi colocado em um setor nessa empresa — fale com o administrador");
         }
 
         Denuncia denuncia = Denuncia.builder()
