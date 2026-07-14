@@ -3,7 +3,11 @@ package com.pulsoetico.pulsoetico.models.dtos;
 import java.time.Instant;
 import java.util.Set;
 
-import com.pulsoetico.pulsoetico.models.*;
+import com.pulsoetico.pulsoetico.models.Cargo;
+import com.pulsoetico.pulsoetico.models.Empresa;
+import com.pulsoetico.pulsoetico.models.MembroEmpresa;
+import com.pulsoetico.pulsoetico.models.Permissoes;
+import com.pulsoetico.pulsoetico.models.Setor;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -99,13 +103,13 @@ public final class EmpresaDtos {
             );
         }
     }
-
-    public record CodigoConviteResponse(
-            Long empresaId,
-            String codigo,
-            Instant geradoEm
-    ) {
-    }
+        public record CodigoConviteResponse(
+                Long empresaId,
+                String codigo,
+                Instant geradoEm,
+                Instant expiraEm
+        ) {
+        }
 
     public record CargoResponse(
             Long id,

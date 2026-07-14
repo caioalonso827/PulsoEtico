@@ -1,6 +1,7 @@
 package com.pulsoetico.pulsoetico.services;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -10,10 +11,26 @@ import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.pulsoetico.pulsoetico.models.*;
-import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.*;
+import com.pulsoetico.pulsoetico.models.Cargo;
+import com.pulsoetico.pulsoetico.models.Empresa;
+import com.pulsoetico.pulsoetico.models.Funcionario;
+import com.pulsoetico.pulsoetico.models.MembroEmpresa;
+import com.pulsoetico.pulsoetico.models.Permissoes;
+import com.pulsoetico.pulsoetico.models.Setor;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.AtualizarMembroRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CargoRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CargoResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CodigoConviteResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CriarEmpresaRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.EmpresaResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.EntrarPorCodigoRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.MembroResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.SetorEmpresaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
-import com.pulsoetico.pulsoetico.repositories.*;
+import com.pulsoetico.pulsoetico.repositories.CargoRepository;
+import com.pulsoetico.pulsoetico.repositories.EmpresaRepository;
+import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
+import com.pulsoetico.pulsoetico.repositories.SetorRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -124,31 +141,51 @@ public class EmpresaService {
         );
     }
 
-    @Transactional
-    public CodigoConviteResponse gerarCodigo(
-            Long empresaId,
-            Funcionario usuario
-    ) {
+
+        private static final Duration TEMPO_VALIDADE_CODIGO = Duration.ofMinutes(15);
+
+        private boolean codigoAindaValido(Empresa empresa) {
+        return empresa.getCodigoConvite() != null
+            && empresa.getCodigoExpiraEm() != null
+            && Instant.now().isBefore(empresa.getCodigoExpiraEm());
+}
+
+        @Transactional
+        public CodigoConviteResponse gerarCodigo(
+                Long empresaId,
+                Funcionario usuario
+        ) {
         MembroEmpresa membro = autorizacao.exigirPermissao(
                 empresaId,
                 usuario,
                 Permissoes.GERENCIAR_MEMBROS
         );
 
-        String codigo = gerarCodigoUnico();
-
         Empresa empresa = membro.getEmpresa();
+
+        if (codigoAindaValido(empresa)) {
+                throw new IllegalStateException(
+                        "Já existe um código de convite ativo para esta empresa"
+                );
+        }
+
+        String codigo = gerarCodigoUnico();
+        Instant agora = Instant.now();
+        Instant expiraEm = agora.plus(TEMPO_VALIDADE_CODIGO);
+
         empresa.setCodigoConvite(codigo);
-        empresa.setCodigoGeradoEm(Instant.now());
+        empresa.setCodigoGeradoEm(agora);
+        empresa.setCodigoExpiraEm(expiraEm);
 
         empresaRepository.save(empresa);
 
         return new CodigoConviteResponse(
                 empresaId,
                 codigo,
-                empresa.getCodigoGeradoEm()
+                empresa.getCodigoGeradoEm(),
+                empresa.getCodigoExpiraEm()
         );
-    }
+        }
 
     @Transactional
     public void desativarCodigo(
@@ -169,65 +206,86 @@ public class EmpresaService {
     }
 
     @Transactional
-    public EmpresaResponse entrarPorCodigo(
-            EntrarPorCodigoRequest request,
-            Funcionario usuario
-    ) {
-        String codigo = request.codigo()
-                .trim()
-                .toUpperCase(Locale.ROOT);
+public EmpresaResponse entrarPorCodigo(
+        EntrarPorCodigoRequest request,
+        Funcionario usuario
+) {
+    String codigo = request.codigo()
+            .trim()
+            .toUpperCase(Locale.ROOT);
 
-        Empresa empresa = empresaRepository
-                .findByCodigoConviteIgnoreCase(codigo)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Código inválido ou desativado"
-                        )
-                );
-
-        var vinculoExistente =
-                membroRepository.findByEmpresaIdAndFuncionarioId(
-                        empresa.getId(),
-                        usuario.getId()
-                );
-
-        if (vinculoExistente.isPresent()
-                && vinculoExistente.get().isAtivo()) {
-            throw new IllegalArgumentException(
-                    "Você já participa desta empresa"
+    Empresa empresa = empresaRepository
+            .findByCodigoConviteIgnoreCase(codigo)
+            .orElseThrow(() ->
+                    new IllegalArgumentException(
+                            "Código inválido ou desativado"
+                    )
             );
-        }
 
-        Cargo colaborador = cargoRepository
-                .findByEmpresaIdAndNomeIgnoreCase(
-                        empresa.getId(),
-                        CARGO_COLABORADOR
-                )
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Cargo padrão não encontrado"
-                        )
-                );
+    if (empresa.getCodigoExpiraEm() == null
+            || Instant.now().isAfter(empresa.getCodigoExpiraEm())) {
 
-        MembroEmpresa membro;
+        empresa.setCodigoConvite(null);
+        empresa.setCodigoGeradoEm(null);
+        empresa.setCodigoExpiraEm(null);
 
-        if (vinculoExistente.isPresent()) {
-            membro = vinculoExistente.get();
-            membro.setCargo(colaborador);
-            membro.setSetor(null);
-            membro.setAtivo(true);
-        } else {
-            membro = MembroEmpresa.builder()
-                    .empresa(empresa)
-                    .funcionario(usuario)
-                    .cargo(colaborador)
-                    .proprietario(false)
-                    .build();
-        }
+        empresaRepository.save(empresa);
 
-        membroRepository.save(membro);
-        return converterEmpresa(membro);
+        throw new IllegalArgumentException(
+                "Código expirado"
+        );
     }
+
+    var vinculoExistente =
+            membroRepository.findByEmpresaIdAndFuncionarioId(
+                    empresa.getId(),
+                    usuario.getId()
+            );
+
+    if (vinculoExistente.isPresent()
+            && vinculoExistente.get().isAtivo()) {
+        throw new IllegalArgumentException(
+                "Você já participa desta empresa"
+        );
+    }
+
+    Cargo colaborador = cargoRepository
+            .findByEmpresaIdAndNomeIgnoreCase(
+                    empresa.getId(),
+                    CARGO_COLABORADOR
+            )
+            .orElseThrow(() ->
+                    new IllegalStateException(
+                            "Cargo padrão não encontrado"
+                    )
+            );
+
+    MembroEmpresa membro;
+
+    if (vinculoExistente.isPresent()) {
+        membro = vinculoExistente.get();
+        membro.setCargo(colaborador);
+        membro.setSetor(null);
+        membro.setAtivo(true);
+    } else {
+        membro = MembroEmpresa.builder()
+                .empresa(empresa)
+                .funcionario(usuario)
+                .cargo(colaborador)
+                .proprietario(false)
+                .build();
+    }
+
+    membroRepository.save(membro);
+
+    // Código de uso único:
+    empresa.setCodigoConvite(null);
+    empresa.setCodigoGeradoEm(null);
+    empresa.setCodigoExpiraEm(null);
+    empresaRepository.save(empresa);
+
+    return converterEmpresa(membro);
+}
 
     @Transactional
     public void sair(Long empresaId, Funcionario usuario) {
