@@ -1,37 +1,58 @@
 package com.pulsoetico.pulsoetico.services;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pulsoetico.pulsoetico.models.CodigoVerificacao;
 import com.pulsoetico.pulsoetico.repositories.CodigoVerificacaoRepository;
-import com.resend.Resend;
-import com.resend.core.exception.ResendException;
-import com.resend.services.emails.model.CreateEmailOptions;
 
 @Service
 public class CodigoVerificacaoService {
 
     private static final long TEMPO_EXPIRACAO_SEGUNDOS = 5 * 60;
 
+    private static final String BREVO_URL = "https://api.brevo.com/v3/smtp/email";
+
     private final CodigoVerificacaoRepository codigoRepository;
     private final SecureRandom secureRandom;
-    private final Resend resend;
-    private final String emailRemetente;
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+
+    private final String brevoApiKey;
+    private final String remetenteEmail;
+    private final String remetenteNome;
 
     public CodigoVerificacaoService(
             CodigoVerificacaoRepository codigoRepository,
-            @Value("${resend.api-key}") String apiKey,
-            @Value("${resend.from}") String emailRemetente) {
+            ObjectMapper objectMapper,
+            @Value("${brevo.api-key}") String brevoApiKey,
+            @Value("${brevo.sender-email}") String remetenteEmail,
+            @Value("${brevo.sender-name}") String remetenteNome) {
         this.codigoRepository = codigoRepository;
+        this.objectMapper = objectMapper;
+        this.brevoApiKey = brevoApiKey;
+        this.remetenteEmail = remetenteEmail;
+        this.remetenteNome = remetenteNome;
+
         this.secureRandom = new SecureRandom();
-        this.resend = new Resend(apiKey);
-        this.emailRemetente = emailRemetente;
+
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     @Transactional
@@ -91,41 +112,97 @@ public class CodigoVerificacaoService {
     private void enviarEmail(
             String emailDestino,
             String codigo) {
-        CreateEmailOptions parametros = CreateEmailOptions.builder()
-                .from(emailRemetente)
-                .to(emailDestino)
-                .subject("Código de verificação - Pulso Ético")
-                .html(
-                        """
-                                <div style="font-family: Arial, sans-serif;">
-                                    <h2>Pulso Ético</h2>
+        String html = """
+                <div style="font-family: Arial, sans-serif;
+                            max-width: 500px;
+                            margin: auto;
+                            padding: 24px;">
 
-                                    <p>Seu código de verificação é:</p>
+                    <h2 style="margin-bottom: 20px;">
+                        Pulso Ético
+                    </h2>
 
-                                    <div style="
-                                        font-size: 32px;
-                                        font-weight: bold;
-                                        letter-spacing: 8px;
-                                        margin: 24px 0;
-                                    ">
-                                        %s
-                                    </div>
+                    <p>
+                        Use o código abaixo para concluir seu login:
+                    </p>
 
-                                    <p>Este código expira em 5 minutos.</p>
+                    <div style="
+                            font-size: 34px;
+                            font-weight: bold;
+                            letter-spacing: 8px;
+                            margin: 28px 0;
+                            padding: 18px;
+                            text-align: center;
+                            background: #f3f3f3;
+                            border-radius: 8px;">
+                        %s
+                    </div>
 
-                                    <p>
-                                        Se você não tentou entrar,
-                                        ignore esta mensagem.
-                                    </p>
-                                </div>
-                                """.formatted(codigo))
+                    <p>
+                        O código expira em 5 minutos.
+                    </p>
+
+                    <p style="color: #666;">
+                        Caso você não tenha tentado entrar,
+                        ignore esta mensagem.
+                    </p>
+                </div>
+                """.formatted(codigo);
+
+        Map<String, Object> corpo = Map.of(
+                "sender", Map.of(
+                        "name", remetenteNome,
+                        "email", remetenteEmail),
+                "to", List.of(
+                        Map.of(
+                                "email", emailDestino)),
+                "subject", "Código de verificação - Pulso Ético",
+                "htmlContent", html);
+
+        String json;
+
+        try {
+            json = objectMapper.writeValueAsString(corpo);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException(
+                    "Não foi possível preparar o e-mail",
+                    ex);
+        }
+
+        HttpRequest requisicao = HttpRequest.newBuilder()
+                .uri(URI.create(BREVO_URL))
+                .timeout(Duration.ofSeconds(15))
+                .header("accept", "application/json")
+                .header("api-key", brevoApiKey)
+                .header("content-type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
 
         try {
-            resend.emails().send(parametros);
-        } catch (ResendException ex) {
+            HttpResponse<String> resposta = httpClient.send(
+                    requisicao,
+                    HttpResponse.BodyHandlers.ofString());
+
+            if (resposta.statusCode() < 200
+                    || resposta.statusCode() >= 300) {
+
+                throw new IllegalStateException(
+                        "A Brevo recusou o envio do e-mail. Status: "
+                                + resposta.statusCode()
+                                + ". Resposta: "
+                                + resposta.body());
+            }
+
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+
             throw new IllegalStateException(
-                    "Não foi possível enviar o código por e-mail",
+                    "O envio do e-mail foi interrompido",
+                    ex);
+
+        } catch (java.io.IOException ex) {
+            throw new IllegalStateException(
+                    "Não foi possível conectar ao serviço de e-mail",
                     ex);
         }
     }
