@@ -26,17 +26,21 @@ import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.EmpresaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.EntrarPorCodigoRequest;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.MembroResponse;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.SetorEmpresaResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.VinculoEmpresaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
 import com.pulsoetico.pulsoetico.repositories.CargoRepository;
 import com.pulsoetico.pulsoetico.repositories.EmpresaRepository;
+import com.pulsoetico.pulsoetico.repositories.FuncionarioRepository;
 import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 import com.pulsoetico.pulsoetico.repositories.SetorRepository;
+import com.pulsoetico.pulsoetico.security.JwtService;
 
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class EmpresaService {
 
+    private final FuncionarioRepository funcionarioRepository;
     private static final String CARGO_ADMINISTRADOR = "Administrador";
     private static final String CARGO_COLABORADOR = "Colaborador";
 
@@ -50,75 +54,87 @@ public class EmpresaService {
     private final MembroEmpresaRepository membroRepository;
     private final SetorRepository setorRepository;
     private final AutorizacaoEmpresaService autorizacao;
+    private final JwtService jwtService;
 
     public EmpresaService(
             EmpresaRepository empresaRepository,
             CargoRepository cargoRepository,
             MembroEmpresaRepository membroRepository,
             SetorRepository setorRepository,
-            AutorizacaoEmpresaService autorizacao
+            JwtService jwtService,
+            AutorizacaoEmpresaService autorizacao, FuncionarioRepository funcionarioRepository
     ) {
         this.empresaRepository = empresaRepository;
         this.cargoRepository = cargoRepository;
         this.membroRepository = membroRepository;
         this.setorRepository = setorRepository;
         this.autorizacao = autorizacao;
+        this.funcionarioRepository = funcionarioRepository;
+        this.jwtService = jwtService;
     }
 
-    @Transactional
-    public EmpresaResponse criar(
-            CriarEmpresaRequest request,
-            Funcionario criador
-    ) {
-        Empresa empresa = empresaRepository.save(
-                Empresa.builder()
-                        .nome(request.nome().trim())
-                        .descricao(normalizar(request.descricao()))
-                        .criadoPor(criador)
-                        .build()
-        );
+@Transactional
+public VinculoEmpresaResponse criar(
+        CriarEmpresaRequest request,
+        Funcionario criador
+) {
+    Empresa empresa = empresaRepository.save(
+            Empresa.builder()
+                    .nome(request.nome().trim())
+                    .descricao(normalizar(request.descricao()))
+                    .criadoPor(criador)
+                    .build()
+    );
 
-        Cargo administrador = cargoRepository.save(
-                Cargo.builder()
-                        .empresa(empresa)
-                        .nome(CARGO_ADMINISTRADOR)
-                        .descricao("Acesso completo à empresa")
-                        .permissoes(EnumSet.allOf(Permissoes.class))
-                        .sistema(true)
-                        .build()
-        );
+    Cargo administrador = cargoRepository.save(
+            Cargo.builder()
+                    .empresa(empresa)
+                    .nome(CARGO_ADMINISTRADOR)
+                    .descricao("Acesso completo à empresa")
+                    .permissoes(EnumSet.allOf(Permissoes.class))
+                    .sistema(true)
+                    .build()
+    );
 
-        cargoRepository.save(
-                Cargo.builder()
-                        .empresa(empresa)
-                        .nome(CARGO_COLABORADOR)
-                        .descricao("Cargo padrão para novos membros")
-                        .permissoes(
-                                EnumSet.of(
-                                        Permissoes.RESPONDER_PESQUISAS,
-                                        Permissoes.REGISTRAR_PONTO
-                                )
-                        )
-                        .sistema(true)
-                        .build()
-        );
+    cargoRepository.save(
+            Cargo.builder()
+                    .empresa(empresa)
+                    .nome(CARGO_COLABORADOR)
+                    .descricao("Cargo padrão para novos membros")
+                    .permissoes(
+                            EnumSet.of(
+                                    Permissoes.RESPONDER_PESQUISAS,
+                                    Permissoes.REGISTRAR_PONTO
+                            )
+                    )
+                    .sistema(true)
+                    .build()
+    );
 
-        MembroEmpresa proprietario = membroRepository.save(
-                MembroEmpresa.builder()
-                        .empresa(empresa)
-                        .funcionario(criador)
-                        .cargo(administrador)
-                        .proprietario(true)
-                        .build()
-        );
+    MembroEmpresa proprietario = membroRepository.save(
+            MembroEmpresa.builder()
+                    .empresa(empresa)
+                    .funcionario(criador)
+                    .cargo(administrador)
+                    .proprietario(true)
+                    .build()
+    );
 
-        return EmpresaResponse.from(
-                proprietario,
-                1,
-                0,
-                true
-        );
-    }
+    criador.setPapel(Funcionario.Papel.GESTOR);
+    funcionarioRepository.save(criador);
+
+    String novoToken = jwtService.gerarToken(criador);
+
+    return new VinculoEmpresaResponse(
+            EmpresaResponse.from(
+                    proprietario,
+                    1,
+                    0,
+                    true
+            ),
+            novoToken
+    );
+}
 
     @Transactional(readOnly = true)
     public List<EmpresaResponse> listarMinhas(Funcionario usuario) {
@@ -201,12 +217,13 @@ public class EmpresaService {
         Empresa empresa = membro.getEmpresa();
         empresa.setCodigoConvite(null);
         empresa.setCodigoGeradoEm(null);
+        empresa.setCodigoExpiraEm(null);
 
         empresaRepository.save(empresa);
     }
 
-    @Transactional
-public EmpresaResponse entrarPorCodigo(
+@Transactional
+public VinculoEmpresaResponse entrarPorCodigo(
         EntrarPorCodigoRequest request,
         Funcionario usuario
 ) {
@@ -225,15 +242,10 @@ public EmpresaResponse entrarPorCodigo(
     if (empresa.getCodigoExpiraEm() == null
             || Instant.now().isAfter(empresa.getCodigoExpiraEm())) {
 
-        empresa.setCodigoConvite(null);
-        empresa.setCodigoGeradoEm(null);
-        empresa.setCodigoExpiraEm(null);
 
         empresaRepository.save(empresa);
 
-        throw new IllegalArgumentException(
-                "Código expirado"
-        );
+        throw new IllegalArgumentException("Código expirado");
     }
 
     var vinculoExistente =
@@ -244,6 +256,7 @@ public EmpresaResponse entrarPorCodigo(
 
     if (vinculoExistente.isPresent()
             && vinculoExistente.get().isAtivo()) {
+
         throw new IllegalArgumentException(
                 "Você já participa desta empresa"
         );
@@ -278,29 +291,49 @@ public EmpresaResponse entrarPorCodigo(
 
     membroRepository.save(membro);
 
-    // Código de uso único:
+    usuario.setPapel(Funcionario.Papel.TRABALHADOR);
+    funcionarioRepository.save(usuario);
+
+    String novoToken = jwtService.gerarToken(usuario);
+
     empresa.setCodigoConvite(null);
     empresa.setCodigoGeradoEm(null);
     empresa.setCodigoExpiraEm(null);
     empresaRepository.save(empresa);
 
-    return converterEmpresa(membro);
+    return new VinculoEmpresaResponse(
+            converterEmpresa(membro),
+            novoToken
+    );
 }
 
-    @Transactional
-    public void sair(Long empresaId, Funcionario usuario) {
-        MembroEmpresa membro =
-                autorizacao.exigirMembro(empresaId, usuario);
+@Transactional
+public VinculoEmpresaResponse sair(
+        Long empresaId,
+        Funcionario usuario
+) {
+    MembroEmpresa membro =
+            autorizacao.exigirMembro(empresaId, usuario);
 
-        if (membro.isProprietario()) {
-            throw new IllegalArgumentException(
-                    "O proprietário não pode sair da empresa"
-            );
-        }
-
-        membro.setAtivo(false);
-        membroRepository.save(membro);
+    if (membro.isProprietario()) {
+        throw new IllegalArgumentException(
+                "O proprietário não pode sair da empresa"
+        );
     }
+
+    membro.setAtivo(false);
+    membroRepository.save(membro);
+
+    usuario.setPapel(Funcionario.Papel.USUARIO);
+    funcionarioRepository.save(usuario);
+
+    String novoToken = jwtService.gerarToken(usuario);
+
+    return new VinculoEmpresaResponse(
+            null,
+            novoToken
+    );
+}
 
     @Transactional(readOnly = true)
     public List<CargoResponse> listarCargos(

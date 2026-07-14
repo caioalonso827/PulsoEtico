@@ -1,5 +1,7 @@
 package com.pulsoetico.pulsoetico.services;
 
+import java.util.Locale;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,19 +38,39 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest request) {
-        try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.email(), request.senha()));
-        } catch (org.springframework.security.core.AuthenticationException ex) {
-            throw new BadCredentialsException("Email ou senha inválidos");
-        }
 
-        Funcionario funcionario = funcionarioRepository.findByEmailWithSetor(request.email())
-                .orElseThrow(() -> new BadCredentialsException("Email ou senha inválidos"));
+    String email = request.email()
+            .trim()
+            .toLowerCase(Locale.ROOT);
 
-        String token = jwtService.gerarToken(funcionario);
-        return LoginResponse.de(token, funcionario);
+    try {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        email,
+                        request.senha()
+                )
+        );
+    } catch (org.springframework.security.core.AuthenticationException ex) {
+        throw new BadCredentialsException(
+                "Email ou senha inválidos"
+        );
     }
+
+    Funcionario funcionario = funcionarioRepository
+            .findByEmailWithSetor(email)
+            .orElseThrow(() ->
+                    new BadCredentialsException(
+                            "Email ou senha inválidos"
+                    )
+            );
+
+    String token = jwtService.gerarToken(funcionario);
+
+    return LoginResponse.de(
+            token,
+            funcionario
+    );
+}
 
         @Transactional
         public LoginResponse cadastrar(CadastroRequest request) {
@@ -66,7 +88,7 @@ public class AuthService {
                 .nomeCompleto(request.nomeCompleto().trim())
                 .email(email)
                 .senha(passwordEncoder.encode(request.senha()))
-                .papel(Funcionario.Papel.TRABALHADOR)
+                .papel(Funcionario.Papel.USUARIO)
                 .build();
 
         funcionarioRepository.save(funcionario);

@@ -20,52 +20,74 @@ public final class EmpresaDtos {
     }
 
     public record CriarEmpresaRequest(
+
             @NotBlank(message = "O nome é obrigatório")
-            @Size(max = 120)
+            @Size(
+                    max = 120,
+                    message = "O nome deve ter no máximo 120 caracteres"
+            )
             String nome,
 
-            @Size(max = 500)
+            @Size(
+                    max = 500,
+                    message = "A descrição deve ter no máximo 500 caracteres"
+            )
             String descricao
+
     ) {
     }
 
     public record EntrarPorCodigoRequest(
+
             @NotBlank(message = "O código é obrigatório")
             @Pattern(
                     regexp = "[A-Za-z0-9]{8}",
-                    message = "O código deve conter 8 caracteres"
+                    message = "O código deve conter 8 caracteres alfanuméricos"
             )
             String codigo
+
     ) {
     }
 
     public record CargoRequest(
+
             @NotBlank(message = "O nome do cargo é obrigatório")
-            @Size(max = 80)
+            @Size(
+                    max = 80,
+                    message = "O nome deve ter no máximo 80 caracteres"
+            )
             String nome,
 
-            @Size(max = 300)
+            @Size(
+                    max = 300,
+                    message = "A descrição deve ter no máximo 300 caracteres"
+            )
             String descricao,
 
             @NotNull(message = "As permissões são obrigatórias")
             Set<Permissoes> permissoes
+
     ) {
     }
 
     public record AtualizarMembroRequest(
+
             @NotNull(message = "O cargoId é obrigatório")
             Long cargoId,
 
             Long setorId
+
     ) {
     }
 
     public record EmpresaResponse(
+
             Long id,
             String nome,
             String descricao,
             String codigoConvite,
             boolean codigoAtivo,
+            Instant codigoExpiraEm,
             boolean proprietario,
             Long cargoId,
             String cargoNome,
@@ -75,7 +97,9 @@ public final class EmpresaDtos {
             long totalMembros,
             long totalSetores,
             Instant criadoEm
+
     ) {
+
         public static EmpresaResponse from(
                 MembroEmpresa membro,
                 long totalMembros,
@@ -85,39 +109,73 @@ public final class EmpresaDtos {
             Empresa empresa = membro.getEmpresa();
             Setor setor = membro.getSetor();
 
+            boolean codigoAtivo =
+                    empresa.getCodigoConvite() != null
+                    && empresa.getCodigoExpiraEm() != null
+                    && Instant.now().isBefore(
+                            empresa.getCodigoExpiraEm()
+                    );
+
+            String codigoConvite =
+                    exibirCodigo && codigoAtivo
+                            ? empresa.getCodigoConvite()
+                            : null;
+
+            Instant codigoExpiraEm =
+                    exibirCodigo
+                            ? empresa.getCodigoExpiraEm()
+                            : null;
+
             return new EmpresaResponse(
                     empresa.getId(),
                     empresa.getNome(),
                     empresa.getDescricao(),
-                    exibirCodigo ? empresa.getCodigoConvite() : null,
-                    empresa.getCodigoConvite() != null,
+                    codigoConvite,
+                    codigoAtivo,
+                    codigoExpiraEm,
                     membro.isProprietario(),
                     membro.getCargo().getId(),
                     membro.getCargo().getNome(),
                     setor != null ? setor.getId() : null,
                     setor != null ? setor.getNome() : null,
-                    Set.copyOf(membro.getCargo().getPermissoes()),
+                    Set.copyOf(
+                            membro.getCargo().getPermissoes()
+                    ),
                     totalMembros,
                     totalSetores,
                     empresa.getCriadoEm()
             );
         }
     }
-        public record CodigoConviteResponse(
-                Long empresaId,
-                String codigo,
-                Instant geradoEm,
-                Instant expiraEm
-        ) {
-        }
+
+    public record CodigoConviteResponse(
+
+            Long empresaId,
+            String codigo,
+            Instant geradoEm,
+            Instant expiraEm
+
+    ) {
+    }
+
+    public record VinculoEmpresaResponse(
+
+            EmpresaResponse empresa,
+            String token
+
+    ) {
+    }
 
     public record CargoResponse(
+
             Long id,
             String nome,
             String descricao,
             Set<Permissoes> permissoes,
             boolean sistema
+
     ) {
+
         public static CargoResponse from(Cargo cargo) {
             return new CargoResponse(
                     cargo.getId(),
@@ -130,6 +188,7 @@ public final class EmpresaDtos {
     }
 
     public record MembroResponse(
+
             Long id,
             Long funcionarioId,
             String nome,
@@ -140,8 +199,12 @@ public final class EmpresaDtos {
             String setorNome,
             boolean proprietario,
             Instant entrouEm
+
     ) {
-        public static MembroResponse from(MembroEmpresa membro) {
+
+        public static MembroResponse from(
+                MembroEmpresa membro
+        ) {
             Setor setor = membro.getSetor();
 
             return new MembroResponse(
@@ -160,13 +223,18 @@ public final class EmpresaDtos {
     }
 
     public record SetorEmpresaResponse(
+
             Long id,
             Long empresaId,
             String nome,
             Integer quantidadeColaboradores,
             Instant criadoEm
+
     ) {
-        public static SetorEmpresaResponse from(Setor setor) {
+
+        public static SetorEmpresaResponse from(
+                Setor setor
+        ) {
             return new SetorEmpresaResponse(
                     setor.getId(),
                     setor.getEmpresa().getId(),

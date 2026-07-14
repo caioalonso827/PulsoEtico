@@ -3,12 +3,30 @@ package com.pulsoetico.pulsoetico.controllers;
 import java.util.Arrays;
 import java.util.List;
 
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.pulsoetico.pulsoetico.models.Permissoes;
-import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.*;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.AtualizarMembroRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CargoRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CargoResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CodigoConviteResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CriarEmpresaRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.EmpresaResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.EntrarPorCodigoRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.MembroResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.SetorEmpresaResponse;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.VinculoEmpresaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
 import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
 import com.pulsoetico.pulsoetico.services.EmpresaService;
@@ -26,7 +44,7 @@ public class EmpresaController {
     }
 
     @PostMapping
-    public ResponseEntity<EmpresaResponse> criar(
+    public ResponseEntity<VinculoEmpresaResponse> criar(
             @Valid @RequestBody CriarEmpresaRequest request,
             @AuthenticationPrincipal FuncionarioUserDetails principal
     ) {
@@ -60,7 +78,7 @@ public class EmpresaController {
     }
 
     @PostMapping("/entrar")
-    public EmpresaResponse entrar(
+    public VinculoEmpresaResponse entrar(
             @Valid @RequestBody EntrarPorCodigoRequest request,
             @AuthenticationPrincipal FuncionarioUserDetails principal
     ) {

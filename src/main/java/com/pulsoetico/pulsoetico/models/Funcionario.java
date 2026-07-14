@@ -1,7 +1,7 @@
 package com.pulsoetico.pulsoetico.models;
 
 import java.time.Instant;
-import com.pulsoetico.pulsoetico.models.Funcionario;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -58,7 +58,7 @@ public class Funcionario {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private Papel papel = Papel.TRABALHADOR;
+    private Papel papel = Papel.USUARIO;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "setor_id")
@@ -88,6 +88,7 @@ public class Funcionario {
     }
 
     public enum Papel {
+        USUARIO,
         TRABALHADOR,
         GESTOR
     }

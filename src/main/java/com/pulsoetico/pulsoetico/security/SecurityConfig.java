@@ -29,14 +29,25 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource())
                 )
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
                 .authorizeHttpRequests(auth -> auth
+
+                        // Rotas públicas
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/v3/api-docs/**",
@@ -44,20 +55,26 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
 
+                        // Usuário recém-cadastrado pode criar empresa
+                        // ou entrar por código.
                         .requestMatchers("/api/empresas/**")
                         .authenticated()
 
+                        // Denúncias
                         .requestMatchers("/api/publico/denuncias/**")
                         .hasAnyRole("TRABALHADOR", "GESTOR")
 
+                        // Painel administrativo
                         .requestMatchers("/api/painel/**")
                         .hasRole("GESTOR")
 
+                        // Aplicativo do trabalhador
                         .requestMatchers("/api/app/**")
                         .hasAnyRole("TRABALHADOR", "GESTOR")
 
                         .anyRequest().authenticated()
                 )
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
@@ -84,7 +101,9 @@ public class SecurityConfig {
             PasswordEncoder passwordEncoder) {
 
         DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(funcionarioDetailsService);
+                new DaoAuthenticationProvider(
+                        funcionarioDetailsService
+                );
 
         provider.setPasswordEncoder(passwordEncoder);
 
@@ -96,9 +115,18 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOriginPatterns(List.of("*"));
+
         config.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                )
         );
+
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
