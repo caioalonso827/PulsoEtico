@@ -9,7 +9,9 @@ import com.pulsoetico.pulsoetico.models.CodigoVerificacao;
 public interface CodigoVerificacaoRepository
         extends JpaRepository<CodigoVerificacao, Long> {
 
-    Optional<CodigoVerificacao> findTopByEmailOrderByExpiraEmDesc(String email);
+    Optional<CodigoVerificacao> findByCodigo(String codigo);
 
-    
+    Optional<CodigoVerificacao> findTopByEmailOrderByExpiraEmDesc(
+            String email);
+
 }

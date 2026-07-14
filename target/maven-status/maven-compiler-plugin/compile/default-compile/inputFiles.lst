@@ -12,6 +12,7 @@ C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoet
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\controllers\RecomendacaoController.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\controllers\RegistroPontoController.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\controllers\SetorController.java
+C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\controllers\usuarioController.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\exceptions\ErroResposta.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\exceptions\GlobalExceptionHandler.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\AvaliacaoRisco.java
@@ -33,6 +34,7 @@ C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoet
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\FuncionarioResponse.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\IndicadoresManuaisRequest.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\JornadaResumoResponse.java
+C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\LoginPendenteResponse.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\LoginRequest.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\LoginResponse.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\PrevisaoRiscoResponse.java
@@ -43,6 +45,7 @@ C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoet
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\SetorRequest.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\SetorResponse.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\SetorStatusResponse.java
+C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\dtos\VerificarCodigoRequest.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\Empresa.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\Funcionario.java
 C:\Users\Win\OneDrive\Documentos\pulsoEtico\PulsoEtico\src\main\java\com\pulsoetico\pulsoetico\models\MembroEmpresa.java

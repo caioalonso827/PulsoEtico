@@ -8,6 +8,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.pulsoetico.pulsoetico.models.CodigoVerificacao;
 import com.pulsoetico.pulsoetico.models.Funcionario;
 import com.pulsoetico.pulsoetico.models.dtos.CadastroRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginPendenteResponse;
@@ -70,16 +71,12 @@ public class AuthService {
 
         public LoginResponse verificarCodigo(
                         VerificarCodigoRequest request) {
-                String email = request.email()
-                                .trim()
-                                .toLowerCase(Locale.ROOT);
-
-                codigoVerificacaoService.validarCodigo(
-                                email,
+                CodigoVerificacao codigoVerificacao = codigoVerificacaoService.validarCodigo(
                                 request.codigo());
 
                 Funcionario funcionario = funcionarioRepository
-                                .findByEmailWithSetor(email)
+                                .findByEmailWithSetor(
+                                                codigoVerificacao.getEmail())
                                 .orElseThrow(() -> new BadCredentialsException(
                                                 "Usuário não encontrado"));
 

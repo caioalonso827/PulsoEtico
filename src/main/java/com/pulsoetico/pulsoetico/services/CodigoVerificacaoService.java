@@ -38,12 +38,11 @@ public class CodigoVerificacaoService {
 
     public CodigoVerificacaoService(
             CodigoVerificacaoRepository codigoRepository,
-            ObjectMapper objectMapper,
             @Value("${brevo.api-key}") String brevoApiKey,
             @Value("${brevo.sender-email}") String remetenteEmail,
             @Value("${brevo.sender-name}") String remetenteNome) {
         this.codigoRepository = codigoRepository;
-        this.objectMapper = objectMapper;
+        this.objectMapper = new ObjectMapper();
         this.brevoApiKey = brevoApiKey;
         this.remetenteEmail = remetenteEmail;
         this.remetenteNome = remetenteNome;
@@ -76,37 +75,29 @@ public class CodigoVerificacaoService {
     }
 
     @Transactional
-    public void validarCodigo(
-            String email,
+    public CodigoVerificacao validarCodigo(
             String codigoInformado) {
-        String emailNormalizado = normalizarEmail(email);
         String codigoNormalizado = normalizarCodigo(codigoInformado);
 
-        CodigoVerificacao codigoVerificacao = codigoRepository
-                .findTopByEmailOrderByExpiraEmDesc(emailNormalizado)
+        CodigoVerificacao codigoVerificacao = codigoRepository.findByCodigo(codigoNormalizado)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Nenhum código de verificação foi solicitado"));
+                        "Código de verificação inválido"));
 
         if (codigoVerificacao.isUtilizado()) {
             throw new IllegalArgumentException(
                     "Este código já foi utilizado");
         }
 
-        if (Instant.now().isAfter(codigoVerificacao.getExpiraEm())) {
+        if (Instant.now().isAfter(
+                codigoVerificacao.getExpiraEm())) {
             throw new IllegalArgumentException(
                     "Código expirado. Solicite um novo código");
         }
 
-        if (!codigoVerificacao
-                .getCodigo()
-                .equals(codigoNormalizado)) {
-
-            throw new IllegalArgumentException(
-                    "Código de verificação inválido");
-        }
-
         codigoVerificacao.setUtilizado(true);
         codigoRepository.save(codigoVerificacao);
+
+        return codigoVerificacao;
     }
 
     private void enviarEmail(
@@ -208,8 +199,14 @@ public class CodigoVerificacaoService {
     }
 
     private String gerarCodigo() {
-        int numero = secureRandom.nextInt(1_000_000);
-        return String.format("%06d", numero);
+        String codigo;
+
+        do {
+            int numero = secureRandom.nextInt(1_000_000);
+            codigo = String.format("%06d", numero);
+        } while (codigoRepository.findByCodigo(codigo).isPresent());
+
+        return codigo;
     }
 
     private String normalizarEmail(String email) {
