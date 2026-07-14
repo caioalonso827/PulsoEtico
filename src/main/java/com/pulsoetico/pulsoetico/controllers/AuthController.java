@@ -5,11 +5,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.pulsoetico.pulsoetico.models.dtos.CadastroRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginRequest;
 import com.pulsoetico.pulsoetico.models.dtos.LoginResponse;
 import com.pulsoetico.pulsoetico.services.AuthService;
+import com.pulsoetico.pulsoetico.services.CodigoVerificacaoService;
+
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 
@@ -18,12 +22,17 @@ import jakarta.validation.Valid;
 public class AuthController {
 
     private final AuthService authService;
+    private final CodigoVerificacaoService codigoVerificacaoService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, CodigoVerificacaoService codigoVerificacaoService) {
         this.authService = authService;
+        this.codigoVerificacaoService = codigoVerificacaoService;
     }
 
-    /** @SecurityRequirements vazio remove o cadeado no Swagger - esse endpoint não precisa de token. */
+    /**
+     * @SecurityRequirements vazio remove o cadeado no Swagger - esse endpoint não
+     *                       precisa de token.
+     */
     @SecurityRequirements
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
@@ -32,9 +41,16 @@ public class AuthController {
 
     @PostMapping("/cadastro")
     public ResponseEntity<LoginResponse> cadastrar(
-        @Valid @RequestBody CadastroRequest request
-) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-            .body(authService.cadastrar(request));
-}
+            @Valid @RequestBody CadastroRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(authService.cadastrar(request));
+    }
+
+    @PostMapping("/teste-email")
+    public ResponseEntity<String> testeEmail(
+            @RequestParam String email) {
+        codigoVerificacaoService.gerarEEnviarCodigo(email);
+
+        return ResponseEntity.ok("Código enviado!");
+    }
 }

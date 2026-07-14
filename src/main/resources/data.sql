@@ -7,3 +7,5 @@ VALUES
     ('Logistica', 25, now()),
     ('Comercial', 30, now())
 ON CONFLICT (nome) DO NOTHING;
+
+
