@@ -7,9 +7,7 @@ pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
 release.properties
-pom.xml
 
-**/application.properties
 
 # IDE
 .idea/
