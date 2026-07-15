@@ -30,7 +30,6 @@ import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.VinculoEmpresaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
 import com.pulsoetico.pulsoetico.repositories.CargoRepository;
 import com.pulsoetico.pulsoetico.repositories.EmpresaRepository;
-import com.pulsoetico.pulsoetico.repositories.FuncionarioRepository;
 import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 import com.pulsoetico.pulsoetico.repositories.SetorRepository;
 import com.pulsoetico.pulsoetico.security.JwtService;
