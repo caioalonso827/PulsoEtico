@@ -43,37 +43,29 @@ public class RiskCalculationService {
     private final AvaliacaoRiscoRepository avaliacaoRiscoRepository;
     private final RecomendacaoService recommendationService;
     private final HorasExtrasCalculatorService horasExtrasCalculatorService;
-    private final FuncionarioService funcionarioService;
     private final DenunciaService denunciaService;
     private final AutorizacaoEmpresaService autorizacao;
-
-    public RiskCalculationService(
-            SetorRepository setorRepository,
-            CheckinHumorRepository checkinHumorRepository,
-            AvaliacaoRiscoRepository avaliacaoRiscoRepository,
-            RecomendacaoService recommendationService,
-            HorasExtrasCalculatorService horasExtrasCalculatorService,
-            FuncionarioService funcionarioService,
-            DenunciaService denunciaService,
-            AutorizacaoEmpresaService autorizacao
-    ) {
-        this.setorRepository = setorRepository;
-        this.checkinHumorRepository =
-                checkinHumorRepository;
-
-        this.avaliacaoRiscoRepository =
-                avaliacaoRiscoRepository;
-
-        this.recommendationService =
-                recommendationService;
-
-        this.horasExtrasCalculatorService =
-                horasExtrasCalculatorService;
-
-        this.funcionarioService = funcionarioService;
-        this.denunciaService = denunciaService;
-        this.autorizacao = autorizacao;
-    }
+    private final RotatividadeService rotatividadeService;
+public RiskCalculationService(
+        SetorRepository setorRepository,
+        CheckinHumorRepository checkinHumorRepository,
+        AvaliacaoRiscoRepository avaliacaoRiscoRepository,
+        RecomendacaoService recommendationService,
+        HorasExtrasCalculatorService horasExtrasCalculatorService,
+        DenunciaService denunciaService,
+        RotatividadeService rotatividadeService,
+        AutorizacaoEmpresaService autorizacao
+) {
+    this.setorRepository = setorRepository;
+    this.checkinHumorRepository = checkinHumorRepository;
+    this.avaliacaoRiscoRepository = avaliacaoRiscoRepository;
+    this.recommendationService = recommendationService;
+    this.horasExtrasCalculatorService =
+            horasExtrasCalculatorService;
+    this.denunciaService = denunciaService;
+    this.rotatividadeService = rotatividadeService;
+    this.autorizacao = autorizacao;
+}
 
     @Transactional
     public AvaliacaoRisco calcularRisco(
@@ -135,19 +127,13 @@ public class RiskCalculationService {
                         );
 
         double taxaRotatividadeMensal =
-                funcionarioService
-                        .calcularTaxaRotatividade(
-                                setor,
-                                desde,
-                                agora
-                        );
 
-        int quantidadeDenuncias =
-                denunciaService.contarNoPeriodo(
-                        setor,
-                        desde,
-                        agora
-                );
+        rotatividadeService.calcularTaxaRotatividade(
+                setor,
+                desde,
+                agora
+        );
+        int quantidadeDenuncias = denunciaService.contarNoPeriodo(setor, desde, agora);
 
         double notaHumor =
                 normalizarSeveridadeHumor(

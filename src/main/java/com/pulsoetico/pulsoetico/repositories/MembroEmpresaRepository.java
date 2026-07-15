@@ -1,21 +1,21 @@
 package com.pulsoetico.pulsoetico.repositories;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.pulsoetico.pulsoetico.models.MembroEmpresa;
+import com.pulsoetico.pulsoetico.models.Setor;
 
 public interface MembroEmpresaRepository
         extends JpaRepository<MembroEmpresa, Long> {
 
-    Optional<MembroEmpresa> findByEmpresaIdAndFuncionarioId(
-            Long empresaId,
-            Long funcionarioId
-    );
-
-    Optional<MembroEmpresa> findByEmpresaIdAndFuncionarioIdAndAtivoTrue(
+    Optional<MembroEmpresa>
+    findByEmpresaIdAndFuncionarioIdAndAtivoTrue(
             Long empresaId,
             Long funcionarioId
     );
@@ -30,7 +30,6 @@ public interface MembroEmpresaRepository
             Long funcionarioId
     );
 
-    /** Empresa "padrão" pra logar quando o usuário não escolheu nenhuma explicitamente. */
     Optional<MembroEmpresa>
     findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(
             Long funcionarioId
@@ -41,9 +40,36 @@ public interface MembroEmpresaRepository
             Long empresaId
     );
 
-    long countByEmpresaIdAndAtivoTrue(Long empresaId);
+    long countByEmpresaIdAndAtivoTrue(
+            Long empresaId
+    );
 
-    long countByCargoId(Long cargoId);
+    long countByCargoIdAndAtivoTrue(
+            Long cargoId
+    );
 
-    long countBySetorIdAndAtivoTrue(Long setorId);
+    long countBySetorIdAndAtivoTrue(
+            Long setorId
+    );
+
+    long countBySetorAndSaiuEmBetween(
+            Setor setor,
+            Instant inicio,
+            Instant fim
+    );
+
+    @Query("""
+            SELECT COUNT(m)
+            FROM MembroEmpresa m
+            WHERE m.setor = :setor
+              AND m.entrouEm <= :momento
+              AND (
+                    m.saiuEm IS NULL
+                    OR m.saiuEm > :momento
+              )
+            """)
+    long contarAtivosNoMomento(
+            @Param("setor") Setor setor,
+            @Param("momento") Instant momento
+    );
 }

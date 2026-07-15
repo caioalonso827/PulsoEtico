@@ -247,20 +247,17 @@ public VinculoEmpresaResponse entrarPorCodigo(
 
         throw new IllegalArgumentException("Código expirado");
     }
-
-    var vinculoExistente =
-            membroRepository.findByEmpresaIdAndFuncionarioId(
-                    empresa.getId(),
-                    usuario.getId()
-            );
-
-    if (vinculoExistente.isPresent()
-            && vinculoExistente.get().isAtivo()) {
+        if (membroRepository
+                .findByEmpresaIdAndFuncionarioIdAndAtivoTrue(
+                        empresa.getId(),
+                        usuario.getId()
+                )
+                .isPresent()) {
 
         throw new IllegalArgumentException(
                 "Você já participa desta empresa"
         );
-    }
+        }
 
     Cargo colaborador = cargoRepository
             .findByEmpresaIdAndNomeIgnoreCase(
@@ -273,21 +270,14 @@ public VinculoEmpresaResponse entrarPorCodigo(
                     )
             );
 
-    MembroEmpresa membro;
-
-    if (vinculoExistente.isPresent()) {
-        membro = vinculoExistente.get();
-        membro.setCargo(colaborador);
-        membro.setSetor(null);
-        membro.setAtivo(true);
-    } else {
-        membro = MembroEmpresa.builder()
-                .empresa(empresa)
-                .funcionario(usuario)
-                .cargo(colaborador)
-                .proprietario(false)
-                .build();
-    }
+    MembroEmpresa membro = MembroEmpresa.builder()
+            .empresa(empresa)
+            .funcionario(usuario)
+            .cargo(colaborador)
+            .setor(null)
+            .proprietario(false)
+            .ativo(true)
+            .build();
 
     membroRepository.save(membro);
 
@@ -322,6 +312,7 @@ public VinculoEmpresaResponse sair(
     }
 
     membro.setAtivo(false);
+    membro.setSaiuEm(Instant.now());
     membroRepository.save(membro);
 
     // Correção de bug: não mutamos mais Funcionario.papel globalmente — isso
@@ -468,7 +459,7 @@ public VinculoEmpresaResponse selecionar(
             );
         }
 
-        if (membroRepository.countByCargoId(cargoId) > 0) {
+        if (membroRepository.countByCargoIdAndAtivoTrue(cargoId) > 0) {
             throw new IllegalArgumentException(
                     "Existem membros usando este cargo"
             );
@@ -551,6 +542,7 @@ public VinculoEmpresaResponse selecionar(
         }
 
         membro.setAtivo(false);
+        membro.setSaiuEm(Instant.now());
         membroRepository.save(membro);
     }
 
