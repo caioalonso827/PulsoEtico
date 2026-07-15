@@ -1,7 +1,11 @@
 package com.pulsoetico.pulsoetico.controllers;
+
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pulsoetico.pulsoetico.models.dtos.AplicacaoFormularioResponse;
+import com.pulsoetico.pulsoetico.models.dtos.FormularioModeloResponse;
 import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
 import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
 import com.pulsoetico.pulsoetico.services.FormularioService;
@@ -30,6 +35,30 @@ public class FormularioPainelController {
         this.formularioService = formularioService;
     }
 
+    @GetMapping("/modelos")
+    public List<FormularioModeloResponse> listarModelos(
+            @PathVariable Long empresaId,
+            @AuthenticationPrincipal
+            FuncionarioUserDetails principal
+    ) {
+        return formularioService.listarModelos(
+                empresaId,
+                principal.getFuncionario()
+        );
+    }
+
+    @GetMapping("/aplicacoes")
+    public List<AplicacaoFormularioResponse> listarAplicacoes(
+            @PathVariable Long empresaId,
+            @AuthenticationPrincipal
+            FuncionarioUserDetails principal
+    ) {
+        return formularioService.listarAplicacoes(
+                empresaId,
+                principal.getFuncionario()
+        );
+    }
+
     @PostMapping("/aplicacoes")
     public ResponseEntity<AplicacaoFormularioResponse> liberar(
             @PathVariable Long empresaId,
@@ -48,18 +77,20 @@ public class FormularioPainelController {
                         )
                 );
     }
-        @PatchMapping("/aplicacoes/{aplicacaoId}/encerrar")
-        public ResponseEntity<Void> encerrarFormulario(
-                @PathVariable Long empresaId,
-                @PathVariable Long aplicacaoId,
-                @AuthenticationPrincipal FuncionarioUserDetails userDetails
-        ) {
+
+    @PatchMapping("/aplicacoes/{aplicacaoId}/encerrar")
+    public ResponseEntity<Void> encerrarFormulario(
+            @PathVariable Long empresaId,
+            @PathVariable Long aplicacaoId,
+            @AuthenticationPrincipal
+            FuncionarioUserDetails principal
+    ) {
         formularioService.encerrarFormulario(
                 empresaId,
                 aplicacaoId,
-                userDetails.getFuncionario()
+                principal.getFuncionario()
         );
 
         return ResponseEntity.noContent().build();
-        }
+    }
 }

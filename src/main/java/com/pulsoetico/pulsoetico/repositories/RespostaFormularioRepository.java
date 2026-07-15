@@ -18,4 +18,8 @@ public interface RespostaFormularioRepository
 
     List<RespostaFormulario>
     findAllByAplicacaoId(Long aplicacaoId);
+
+    List<RespostaFormulario> findAllByAplicacao_Empresa_Id(
+        Long empresaId
+);
 }

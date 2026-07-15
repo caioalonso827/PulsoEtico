@@ -320,4 +320,14 @@ public MembroResponse atualizarSetorMembro(
 
         return ResponseEntity.noContent().build();
     }
+        @DeleteMapping("/{empresaId}")
+        public VinculoEmpresaResponse excluirEmpresa(
+                @PathVariable Long empresaId,
+                @AuthenticationPrincipal FuncionarioUserDetails principal
+        ) {
+        return empresaService.excluirEmpresa(
+                empresaId,
+                principal.getFuncionario()
+        );
+        }
 }

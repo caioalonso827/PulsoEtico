@@ -19,4 +19,8 @@ public interface CheckinHumorRepository extends JpaRepository<CheckinHumor, Long
     List<CheckinHumor> findBySetorAndCriadoEmAfter(Setor setor, Instant desde);
 
     long countBySetorAndCriadoEmAfter(Setor setor, Instant desde);
+
+    List<CheckinHumor> findAllBySetor_Empresa_Id(
+        Long empresaId
+);
 }

@@ -32,4 +32,8 @@ public interface AvaliacaoRiscoRepository
     List<AvaliacaoRisco> buscarUltimaAvaliacaoDeCadaSetorDaEmpresa(
             @Param("empresaId") Long empresaId
     );
+
+    List<AvaliacaoRisco> findAllBySetor_Empresa_Id(
+        Long empresaId
+);
 }

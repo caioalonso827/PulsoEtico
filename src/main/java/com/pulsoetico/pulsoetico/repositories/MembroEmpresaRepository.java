@@ -81,4 +81,8 @@ public interface MembroEmpresaRepository
         Long empresaId,
         Long funcionarioId
 );
+
+List<MembroEmpresa> findAllByEmpresaId(
+        Long empresaId
+);
 }

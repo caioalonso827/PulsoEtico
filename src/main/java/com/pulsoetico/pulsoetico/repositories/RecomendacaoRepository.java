@@ -31,4 +31,8 @@ public interface RecomendacaoRepository
     findTop20ByAvaliacaoRisco_Setor_Empresa_IdOrderByCriadoEmDesc(
             Long empresaId
     );
+
+    List<Recomendacao> findAllByAvaliacaoRisco_Setor_Empresa_Id(
+        Long empresaId
+);
 }

@@ -9,7 +9,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import org.springframework.security.access.AccessDeniedException;
 import jakarta.persistence.EntityNotFoundException;
 
 @RestControllerAdvice
@@ -100,4 +100,18 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(corpo);
     }
+    @ExceptionHandler(AccessDeniedException.class)
+public ResponseEntity<ErroResposta> tratarAcessoNegado(
+        AccessDeniedException ex
+) {
+    ErroResposta corpo = ErroResposta.de(
+            HttpStatus.FORBIDDEN.value(),
+            "Acesso negado",
+            ex.getMessage()
+    );
+
+    return ResponseEntity
+            .status(HttpStatus.FORBIDDEN)
+            .body(corpo);
+}
 }

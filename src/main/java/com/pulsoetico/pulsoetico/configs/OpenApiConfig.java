@@ -27,7 +27,7 @@ public class OpenApiConfig {
                                 e sugere ações preventivas para RH e gestores. Alinhado à NR-1.
                                 """)
                         .license(new License()
-                                .name("Uso interno - Hack L'Oréal")))
+                                .name("Pulso Etico")))
                 // Isso é o que faz o botão "Authorize" aparecer no Swagger UI
                 .addSecurityItem(new SecurityRequirement().addList(ESQUEMA_BEARER))
                 .components(new Components()

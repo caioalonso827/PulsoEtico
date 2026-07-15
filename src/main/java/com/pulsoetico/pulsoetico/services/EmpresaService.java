@@ -57,6 +57,7 @@ public class EmpresaService {
     private final SetorPadraoService setorPadraoService;
     private final AutorizacaoEmpresaService autorizacao;
     private final JwtService jwtService;
+    private final EmpresaExclusaoService empresaExclusaoService;
 
     public EmpresaService(
             EmpresaRepository empresaRepository,
@@ -66,7 +67,8 @@ public class EmpresaService {
             SetorPadraoService setorPadraoService,
             JwtService jwtService,
             AutorizacaoEmpresaService autorizacao,
-            FuncionarioRepository funcionarioRepository
+            FuncionarioRepository funcionarioRepository,
+            EmpresaExclusaoService empresaExclusaoService
     ) {
         this.empresaRepository = empresaRepository;
         this.cargoRepository = cargoRepository;
@@ -76,6 +78,7 @@ public class EmpresaService {
         this.autorizacao = autorizacao;
         this.funcionarioRepository = funcionarioRepository;
         this.jwtService = jwtService;
+        this.empresaExclusaoService = empresaExclusaoService;
     }
 
 @Transactional
@@ -197,7 +200,6 @@ public VinculoEmpresaResponse criar(
         String codigo = gerarCodigoUnico();
         Instant agora = Instant.now();
         Instant expiraEm = agora.plus(TEMPO_VALIDADE_CODIGO);
-
         empresa.setCodigoConvite(codigo);
         empresa.setCodigoGeradoEm(agora);
         empresa.setCodigoExpiraEm(expiraEm);
@@ -819,4 +821,31 @@ public MembroResponse atualizarSetorMembro(
                 ? null
                 : texto.trim();
     }
+    @Transactional
+public VinculoEmpresaResponse excluirEmpresa(
+        Long empresaId,
+        Funcionario usuario
+) {
+    MembroEmpresa administrador =
+            autorizacao.exigirPermissao(
+                    empresaId,
+                    usuario,
+                    Permissoes.GERENCIAR_EMPRESA
+            );
+
+    empresaExclusaoService.excluir(
+            administrador.getEmpresa()
+    );
+
+    /*
+     * O token antigo ainda contém o ID da empresa que foi excluída.
+     * Por isso, geramos um token novo sem empresa ativa.
+     */
+    String novoToken = jwtService.gerarToken(usuario);
+
+    return new VinculoEmpresaResponse(
+            null,
+            novoToken
+    );
+}
 }

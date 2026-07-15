@@ -39,4 +39,8 @@ public interface DenunciaRepository
             Long denunciaId,
             Long empresaId
     );
+
+    List<Denuncia> findAllBySetor_Empresa_Id(
+        Long empresaId
+);
 }

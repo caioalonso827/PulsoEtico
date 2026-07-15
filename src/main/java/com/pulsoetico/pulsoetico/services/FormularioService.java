@@ -21,6 +21,7 @@ import com.pulsoetico.pulsoetico.models.RespostaPergunta;
 import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.StatusAplicacaoFormulario;
 import com.pulsoetico.pulsoetico.models.dtos.AplicacaoFormularioResponse;
+import com.pulsoetico.pulsoetico.models.dtos.FormularioModeloResponse;
 import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
 import com.pulsoetico.pulsoetico.models.dtos.PerguntaFormularioResponse;
 import com.pulsoetico.pulsoetico.models.dtos.ResponderFormularioRequest;
@@ -57,6 +58,42 @@ public class FormularioService {
         this.setorRepository = setorRepository;
         this.respostaRepository = respostaRepository;
         this.membroEmpresaRepository = membroEmpresaRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<FormularioModeloResponse> listarModelos(
+            Long empresaId,
+            Funcionario usuario
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.GERENCIAR_PESQUISAS
+        );
+
+        return formularioRepository
+                .findAllByAtivoTrueOrderByTituloAsc()
+                .stream()
+                .map(this::converterModeloParaResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AplicacaoFormularioResponse> listarAplicacoes(
+            Long empresaId,
+            Funcionario usuario
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.GERENCIAR_PESQUISAS
+        );
+
+        return aplicacaoFormularioRepository
+                .findAllByEmpresaIdOrderByCriadoEmDesc(empresaId)
+                .stream()
+                .map(this::converterParaResponse)
+                .toList();
     }
 
     @Transactional
@@ -469,7 +506,41 @@ private void validarAplicacaoAtiva(
         );
     }
 }
-        private AplicacaoFormularioResponse converterParaResponse(
+    private FormularioModeloResponse converterModeloParaResponse(
+            FormularioModelo formulario
+    ) {
+        List<PerguntaFormularioResponse> perguntas =
+                formulario.getPerguntas()
+                        .stream()
+                        .sorted(
+                                java.util.Comparator.comparing(
+                                        PerguntaFormulario::getOrdem,
+                                        java.util.Comparator.nullsLast(
+                                                java.util.Comparator.naturalOrder()
+                                        )
+                                )
+                        )
+                        .map(pergunta ->
+                                new PerguntaFormularioResponse(
+                                        pergunta.getId(),
+                                        pergunta.getTexto(),
+                                        pergunta.getOrdem()
+                                )
+                        )
+                        .toList();
+
+        return new FormularioModeloResponse(
+                formulario.getId(),
+                formulario.getTipo(),
+                formulario.getTitulo(),
+                formulario.getDescricao(),
+                formulario.isAtivo(),
+                perguntas.size(),
+                perguntas
+        );
+    }
+
+    private AplicacaoFormularioResponse converterParaResponse(
         AplicacaoFormulario aplicacao
 ) {
     FormularioModelo formulario =
