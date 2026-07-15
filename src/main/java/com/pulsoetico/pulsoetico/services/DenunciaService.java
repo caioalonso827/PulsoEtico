@@ -39,9 +39,10 @@ public class DenunciaService {
             Funcionario funcionarioLogado,
             Long empresaId
     ) {
-        MembroEmpresa membro = autorizacao.exigirMembro(
+        MembroEmpresa membro = autorizacao.exigirPermissao(
                 empresaId,
-                funcionarioLogado
+                funcionarioLogado,
+                Permissoes.RESPONDER_DENUNCIAS
         );
 
         Setor setor = membro.getSetor();
@@ -55,11 +56,7 @@ public class DenunciaService {
         Denuncia denuncia = Denuncia.builder()
                 .setor(setor)
                 .tipo(request.tipo().trim())
-                .descricao(
-                        normalizarDescricao(
-                                request.descricao()
-                        )
-                )
+                .descricao(normalizarDescricao(request.descricao()))
                 .build();
 
         return denunciaRepository.save(denuncia);
@@ -76,6 +73,13 @@ public class DenunciaService {
                 Permissoes.GERENCIAR_DENUNCIAS
         );
 
+        return listarRecentesDaEmpresa(empresaId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Denuncia> listarRecentesDaEmpresa(
+            Long empresaId
+    ) {
         return denunciaRepository
                 .findTop20BySetor_Empresa_IdOrderByCriadoEmDesc(
                         empresaId
@@ -108,10 +112,7 @@ public class DenunciaService {
         denuncia.setStatus(
                 Denuncia.StatusDenuncia.RESPONDIDA
         );
-
-        denuncia.setRespondidaEm(
-                Instant.now()
-        );
+        denuncia.setRespondidaEm(Instant.now());
 
         return denunciaRepository.save(denuncia);
     }
@@ -133,41 +134,34 @@ public class DenunciaService {
                 : (int) quantidade;
     }
 
-    /*
-     * Mantido porque o DashboardService atual ainda utiliza este método.
-     * O dashboard será corrigido posteriormente para usar empresaId.
-     */
-    public List<Denuncia> listarRecentes() {
+    public long contarAbertasDaEmpresa(Long empresaId) {
         return denunciaRepository
-                .findTop20ByOrderByCriadoEmDesc();
+                .countBySetor_Empresa_IdAndStatus(
+                        empresaId,
+                        Denuncia.StatusDenuncia.ABERTA
+                );
     }
 
-    public long contarAbertas() {
-        return denunciaRepository.countByStatus(
-                Denuncia.StatusDenuncia.ABERTA
-        );
-    }
-
-    public long contarSemRespostaAlemDoLimite() {
+    public long contarSemRespostaAlemDoLimiteDaEmpresa(
+            Long empresaId
+    ) {
         Instant limite = Instant.now().minus(
                 HORAS_LIMITE_RESPOSTA,
                 ChronoUnit.HOURS
         );
 
         return denunciaRepository
-                .countByStatusAndCriadoEmBefore(
+                .countBySetor_Empresa_IdAndStatusAndCriadoEmBefore(
+                        empresaId,
                         Denuncia.StatusDenuncia.ABERTA,
                         limite
                 );
     }
 
-    private String normalizarDescricao(
-            String descricao
-    ) {
+    private String normalizarDescricao(String descricao) {
         if (descricao == null || descricao.isBlank()) {
             return null;
         }
-
         return descricao.trim();
     }
 }

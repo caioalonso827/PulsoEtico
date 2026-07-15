@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.pulsoetico.pulsoetico.models.AvaliacaoRisco;
 import com.pulsoetico.pulsoetico.models.CheckinHumor;
+import com.pulsoetico.pulsoetico.models.Funcionario;
+import com.pulsoetico.pulsoetico.models.Permissoes;
 import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.dtos.CalculoRiscoRequest;
 import com.pulsoetico.pulsoetico.repositories.AvaliacaoRiscoRepository;
@@ -50,6 +52,7 @@ public class RiskCalculationService {
     private final HorasExtrasCalculatorService horasExtrasCalculatorService;
     private final FuncionarioService funcionarioService;
     private final DenunciaService denunciaService;
+    private final AutorizacaoEmpresaService autorizacao;
 
     public RiskCalculationService(
             SetorRepository setorRepository,
@@ -58,7 +61,8 @@ public class RiskCalculationService {
             RecomendacaoService recommendationService,
             HorasExtrasCalculatorService horasExtrasCalculatorService,
             FuncionarioService funcionarioService,
-            DenunciaService denunciaService
+            DenunciaService denunciaService,
+            AutorizacaoEmpresaService autorizacao
     ) {
         this.setorRepository = setorRepository;
         this.checkinHumorRepository = checkinHumorRepository;
@@ -67,15 +71,34 @@ public class RiskCalculationService {
         this.horasExtrasCalculatorService = horasExtrasCalculatorService;
         this.funcionarioService = funcionarioService;
         this.denunciaService = denunciaService;
+        this.autorizacao = autorizacao;
     }
 
     /** Dispara manualmente ("recalcular agora"), usado pelo endpoint POST /avaliacoes-risco. */
     @Transactional
-    public AvaliacaoRisco calcularRisco(CalculoRiscoRequest request) {
-        Setor setor = setorRepository.findById(request.setorId())
-                .orElseThrow(() -> new EntityNotFoundException("Setor não encontrado: " + request.setorId()));
+    public AvaliacaoRisco calcularRisco(
+            Long empresaId,
+            Funcionario usuario,
+            CalculoRiscoRequest request
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.VISUALIZAR_DASHBOARD
+        );
 
-        return calcularRiscoDoSetor(setor, request.diasJanelaOuPadrao());
+        Setor setor = setorRepository
+                .findByIdAndEmpresaId(request.setorId(), empresaId)
+                .orElseThrow(() ->
+                        new EntityNotFoundException(
+                                "Setor não encontrado nesta empresa"
+                        )
+                );
+
+        return calcularRiscoDoSetor(
+                setor,
+                request.diasJanelaOuPadrao()
+        );
     }
 
     /** Usado pelo job agendado (RiskCalculationScheduler), que roda pra todos os setores sozinho. */

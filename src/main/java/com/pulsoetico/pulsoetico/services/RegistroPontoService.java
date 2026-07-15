@@ -1,19 +1,27 @@
 package com.pulsoetico.pulsoetico.services;
 
-import com.pulsoetico.pulsoetico.models.dtos.RegistroPontoRequest;
-import com.pulsoetico.pulsoetico.models.Funcionario;
-import com.pulsoetico.pulsoetico.models.RegistroPonto;
-import com.pulsoetico.pulsoetico.repositories.RegistroPontoRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.pulsoetico.pulsoetico.models.Funcionario;
+import com.pulsoetico.pulsoetico.models.MembroEmpresa;
+import com.pulsoetico.pulsoetico.models.Permissoes;
+import com.pulsoetico.pulsoetico.models.RegistroPonto;
+import com.pulsoetico.pulsoetico.models.dtos.RegistroPontoRequest;
+import com.pulsoetico.pulsoetico.repositories.RegistroPontoRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+
 @Service
 public class RegistroPontoService {
+
+    private static final ZoneId ZONA =
+            ZoneId.of("America/Sao_Paulo");
 
     private static final RegistroPonto.TipoRegistro[] SEQUENCIA = {
             RegistroPonto.TipoRegistro.ENTRADA,
@@ -21,17 +29,44 @@ public class RegistroPontoService {
     };
 
     private final RegistroPontoRepository registroPontoRepository;
+    private final AutorizacaoEmpresaService autorizacao;
 
-    public RegistroPontoService(RegistroPontoRepository registroPontoRepository) {
+    public RegistroPontoService(
+            RegistroPontoRepository registroPontoRepository,
+            AutorizacaoEmpresaService autorizacao
+    ) {
         this.registroPontoRepository = registroPontoRepository;
+        this.autorizacao = autorizacao;
     }
 
     @Transactional
-    public RegistroPonto registrar(Funcionario funcionario, RegistroPontoRequest request) {
-        RegistroPonto.TipoRegistro proximoTipo = deduzirProximoTipo(funcionario);
+    public RegistroPonto registrar(
+            Long empresaId,
+            Funcionario funcionario,
+            RegistroPontoRequest request
+    ) {
+        MembroEmpresa membro = autorizacao.exigirPermissao(
+                empresaId,
+                funcionario,
+                Permissoes.REGISTRAR_PONTO
+        );
+
+        if (membro.getSetor() == null) {
+            throw new EntityNotFoundException(
+                    "Você ainda não possui setor nesta empresa"
+            );
+        }
+
+        RegistroPonto.TipoRegistro proximoTipo =
+                deduzirProximoTipo(
+                        empresaId,
+                        funcionario.getId()
+                );
 
         RegistroPonto registro = RegistroPonto.builder()
                 .funcionario(funcionario)
+                .empresa(membro.getEmpresa())
+                .setor(membro.getSetor())
                 .tipo(proximoTipo)
                 .fotoBase64(request.fotoBase64())
                 .build();
@@ -39,25 +74,46 @@ public class RegistroPontoService {
         return registroPontoRepository.save(registro);
     }
 
-    public List<RegistroPonto> buscarRegistrosDeHoje(Funcionario funcionario) {
-        Instant inicioDoDia = LocalDate.now(ZoneId.systemDefault())
-                .atStartOfDay(ZoneId.systemDefault())
+    @Transactional(readOnly = true)
+    public List<RegistroPonto> buscarRegistrosDeHoje(
+            Long empresaId,
+            Funcionario funcionario
+    ) {
+        autorizacao.exigirMembro(empresaId, funcionario);
+
+        Instant inicioDoDia = LocalDate.now(ZONA)
+                .atStartOfDay(ZONA)
                 .toInstant();
+
         Instant fimDoDia = inicioDoDia.plusSeconds(86400);
 
         return registroPontoRepository
-                .findByFuncionarioAndHorarioBetweenOrderByHorarioAsc(funcionario, inicioDoDia, fimDoDia);
+                .findByEmpresaIdAndFuncionarioIdAndHorarioBetweenOrderByHorarioAsc(
+                        empresaId,
+                        funcionario.getId(),
+                        inicioDoDia,
+                        fimDoDia
+                );
     }
 
-    private RegistroPonto.TipoRegistro deduzirProximoTipo(Funcionario funcionario) {
-        RegistroPonto ultimo = registroPontoRepository.findTopByFuncionarioOrderByHorarioDesc(funcionario);
+    private RegistroPonto.TipoRegistro deduzirProximoTipo(
+            Long empresaId,
+            Long funcionarioId
+    ) {
+        RegistroPonto ultimo = registroPontoRepository
+                .findTopByEmpresaIdAndFuncionarioIdOrderByHorarioDesc(
+                        empresaId,
+                        funcionarioId
+                );
 
         if (ultimo == null) {
             return RegistroPonto.TipoRegistro.ENTRADA;
         }
 
         int indiceAtual = indexOf(ultimo.getTipo());
-        int proximoIndice = (indiceAtual + 1) % SEQUENCIA.length;
+        int proximoIndice =
+                (indiceAtual + 1) % SEQUENCIA.length;
+
         return SEQUENCIA[proximoIndice];
     }
 

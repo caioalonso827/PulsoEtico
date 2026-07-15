@@ -18,16 +18,16 @@ public interface DenunciaRepository
             Instant fim
     );
 
-    long countByStatus(
+    long countBySetor_Empresa_IdAndStatus(
+            Long empresaId,
             Denuncia.StatusDenuncia status
     );
 
-    long countByStatusAndCriadoEmBefore(
+    long countBySetor_Empresa_IdAndStatusAndCriadoEmBefore(
+            Long empresaId,
             Denuncia.StatusDenuncia status,
             Instant limite
     );
-
-    List<Denuncia> findTop20ByOrderByCriadoEmDesc();
 
     List<Denuncia>
     findTop20BySetor_Empresa_IdOrderByCriadoEmDesc(

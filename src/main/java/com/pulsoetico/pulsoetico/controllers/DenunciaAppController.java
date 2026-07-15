@@ -23,9 +23,7 @@ public class DenunciaAppController {
 
     private final DenunciaService denunciaService;
 
-    public DenunciaAppController(
-            DenunciaService denunciaService
-    ) {
+    public DenunciaAppController(DenunciaService denunciaService) {
         this.denunciaService = denunciaService;
     }
 
@@ -35,12 +33,11 @@ public class DenunciaAppController {
             @Valid @RequestBody DenunciaRequest request,
             @AuthenticationPrincipal FuncionarioUserDetails principal
     ) {
-        Denuncia denuncia =
-                denunciaService.registrarAnonimamente(
-                        request,
-                        principal.getFuncionario(),
-                        empresaId
-                );
+        Denuncia denuncia = denunciaService.registrarAnonimamente(
+                request,
+                principal.getFuncionario(),
+                empresaId
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

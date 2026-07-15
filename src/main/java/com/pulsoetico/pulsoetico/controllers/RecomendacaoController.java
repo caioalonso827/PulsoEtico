@@ -1,33 +1,59 @@
 package com.pulsoetico.pulsoetico.controllers;
 
-
-import com.pulsoetico.pulsoetico.models.dtos.RecomendacaoResponse;
-import com.pulsoetico.pulsoetico.services.RecomendacaoService;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.pulsoetico.pulsoetico.models.dtos.RecomendacaoResponse;
+import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
+import com.pulsoetico.pulsoetico.services.RecomendacaoService;
+
 @RestController
-@RequestMapping("/api/painel/recomendacoes")
+@RequestMapping("/api/painel/empresas/{empresaId}/recomendacoes")
 public class RecomendacaoController {
 
-    private final RecomendacaoService recommendationService;
+    private final RecomendacaoService recomendacaoService;
 
-    public RecomendacaoController(RecomendacaoService recommendationService) {
-        this.recommendationService = recommendationService;
+    public RecomendacaoController(
+            RecomendacaoService recomendacaoService
+    ) {
+        this.recomendacaoService = recomendacaoService;
     }
 
-    /** Recomendações pendentes (ainda não vistas) de um setor — o que aparece no painel do gestor. */
     @GetMapping("/setor/{setorId}/pendentes")
-    public List<RecomendacaoResponse> listarPendentes(@PathVariable Long setorId) {
-        return recommendationService.listarPendentesPorSetor(setorId).stream()
+    public List<RecomendacaoResponse> listarPendentes(
+            @PathVariable Long empresaId,
+            @PathVariable Long setorId,
+            @AuthenticationPrincipal FuncionarioUserDetails principal
+    ) {
+        return recomendacaoService
+                .listarPendentesPorSetor(
+                        empresaId,
+                        setorId,
+                        principal.getFuncionario()
+                )
+                .stream()
                 .map(RecomendacaoResponse::from)
                 .toList();
     }
 
-    /** Gestor marca a recomendação como vista/tratada. */
-    @PatchMapping("/{id}/reconhecer")
-    public RecomendacaoResponse reconhecer(@PathVariable Long id) {
-        return RecomendacaoResponse.from(recommendationService.reconhecer(id));
+    @PatchMapping("/{recomendacaoId}/reconhecer")
+    public RecomendacaoResponse reconhecer(
+            @PathVariable Long empresaId,
+            @PathVariable Long recomendacaoId,
+            @AuthenticationPrincipal FuncionarioUserDetails principal
+    ) {
+        return RecomendacaoResponse.from(
+                recomendacaoService.reconhecer(
+                        empresaId,
+                        recomendacaoId,
+                        principal.getFuncionario()
+                )
+        );
     }
 }

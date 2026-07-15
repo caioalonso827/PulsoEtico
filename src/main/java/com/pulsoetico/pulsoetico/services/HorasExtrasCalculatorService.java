@@ -44,7 +44,7 @@ public class HorasExtrasCalculatorService {
     /** Retorna a média de horas extras POR SEMANA do setor, no período informado. */
     public double calcularMediaHorasExtrasSemana(Setor setor, Instant inicio, Instant fim) {
         List<RegistroPonto> registros = registroPontoRepository
-                .findByFuncionario_SetorAndHorarioBetween(setor, inicio, fim);
+                .findBySetorAndHorarioBetween(setor, inicio, fim);
 
         if (registros.isEmpty()) {
             return 0.0;

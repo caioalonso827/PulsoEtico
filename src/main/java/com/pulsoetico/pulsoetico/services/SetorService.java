@@ -1,13 +1,12 @@
 package com.pulsoetico.pulsoetico.services;
 
-
-import java.util.List;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pulsoetico.pulsoetico.models.Funcionario;
+import com.pulsoetico.pulsoetico.models.Permissoes;
 import com.pulsoetico.pulsoetico.models.Setor;
-import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
+import com.pulsoetico.pulsoetico.models.dtos.IndicadoresManuaisRequest;
 import com.pulsoetico.pulsoetico.repositories.SetorRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -16,37 +15,55 @@ import jakarta.persistence.EntityNotFoundException;
 public class SetorService {
 
     private final SetorRepository setorRepository;
+    private final AutorizacaoEmpresaService autorizacao;
 
-    public SetorService(SetorRepository setorRepository) {
+    public SetorService(
+            SetorRepository setorRepository,
+            AutorizacaoEmpresaService autorizacao
+    ) {
         this.setorRepository = setorRepository;
+        this.autorizacao = autorizacao;
+    }
+
+    @Transactional(readOnly = true)
+    public Setor buscarPorIdDaEmpresa(
+            Long empresaId,
+            Long setorId
+    ) {
+        return setorRepository
+                .findByIdAndEmpresaId(setorId, empresaId)
+                .orElseThrow(() ->
+                        new EntityNotFoundException(
+                                "Setor não encontrado nesta empresa"
+                        )
+                );
     }
 
     @Transactional
-    public Setor criar(SetorRequest request) {
-        if (setorRepository.existsByNomeAndEmpresaIsNull(request.nome())) {
-            throw new IllegalArgumentException("Já existe um setor com o nome: " + request.nome());
-        }
-        Setor setor = Setor.builder()
-                .nome(request.nome())
-                .quantidadeColaboradores(request.quantidadeColaboradores())
-                .build();
-        return setorRepository.save(setor);
-    }
+    public Setor atualizarIndicadoresManuais(
+            Long empresaId,
+            Long setorId,
+            IndicadoresManuaisRequest request,
+            Funcionario usuario
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.GERENCIAR_SETORES
+        );
 
-    public List<Setor> listarTodos() {
-        return setorRepository.findAll();
-    }
+        Setor setor = buscarPorIdDaEmpresa(
+                empresaId,
+                setorId
+        );
 
-    public Setor buscarPorId(Long id) {
-        return setorRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Setor não encontrado: " + id));
-    }
+        setor.setTaxaRotatividadeMensal(
+                request.taxaRotatividadeMensal()
+        );
+        setor.setQuantidadeDenunciasAnonimasMensal(
+                request.quantidadeDenunciasAnonimasMensal()
+        );
 
-    @Transactional
-    public Setor atualizarIndicadoresManuais(Long id, com.pulsoetico.pulsoetico.models.dtos.IndicadoresManuaisRequest request) {
-        Setor setor = buscarPorId(id);
-        setor.setTaxaRotatividadeMensal(request.taxaRotatividadeMensal());
-        setor.setQuantidadeDenunciasAnonimasMensal(request.quantidadeDenunciasAnonimasMensal());
         return setorRepository.save(setor);
     }
 }

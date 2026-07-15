@@ -1,6 +1,5 @@
 package com.pulsoetico.pulsoetico.models;
 
-
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -21,14 +20,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Um registro de ponto (ENTRADA ou SAIDA), com foto de comprovação.
- *
- * A foto fica aqui só como prova/auditoria manual — não há verificação facial
- * automática no MVP. Esses registros também alimentam o cálculo de horas extras
- * por setor no RiskCalculationService (substituindo, no futuro, a entrada manual
- * que o RH faz hoje no CalculoRiscoRequest).
- */
 @Entity
 @Table(name = "registros_ponto")
 @Getter
@@ -46,6 +37,18 @@ public class RegistroPonto {
     @JoinColumn(name = "funcionario_id", nullable = false)
     private Funcionario funcionario;
 
+    /*
+     * Mantidos nullable nesta primeira migração para não quebrar registros
+     * antigos. Todo registro novo será salvo com empresa e setor.
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "empresa_id")
+    private Empresa empresa;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "setor_id")
+    private Setor setor;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoRegistro tipo;
@@ -53,11 +56,6 @@ public class RegistroPonto {
     @Column(nullable = false)
     private Instant horario;
 
-    /**
-     * Selfie tirada no momento do registro, em base64.
-     * Simplificação para o hack — em produção isso iria para um storage de
-     * objetos (S3, Cloudinary etc), guardando só a URL aqui.
-     */
     @Column(name = "foto_base64", columnDefinition = "TEXT", nullable = false)
     private String fotoBase64;
 

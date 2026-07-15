@@ -19,9 +19,7 @@ public class DenunciaPainelController {
 
     private final DenunciaService denunciaService;
 
-    public DenunciaPainelController(
-            DenunciaService denunciaService
-    ) {
+    public DenunciaPainelController(DenunciaService denunciaService) {
         this.denunciaService = denunciaService;
     }
 
