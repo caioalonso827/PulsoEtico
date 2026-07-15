@@ -39,8 +39,6 @@ import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class EmpresaService {
-
-    private final FuncionarioRepository funcionarioRepository;
     private static final String CARGO_ADMINISTRADOR = "Administrador";
     private static final String CARGO_COLABORADOR = "Colaborador";
 
@@ -62,14 +60,13 @@ public class EmpresaService {
             MembroEmpresaRepository membroRepository,
             SetorRepository setorRepository,
             JwtService jwtService,
-            AutorizacaoEmpresaService autorizacao, FuncionarioRepository funcionarioRepository
+            AutorizacaoEmpresaService autorizacao
     ) {
         this.empresaRepository = empresaRepository;
         this.cargoRepository = cargoRepository;
         this.membroRepository = membroRepository;
         this.setorRepository = setorRepository;
         this.autorizacao = autorizacao;
-        this.funcionarioRepository = funcionarioRepository;
         this.jwtService = jwtService;
     }
 
