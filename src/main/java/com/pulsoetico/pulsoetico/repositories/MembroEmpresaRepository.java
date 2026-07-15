@@ -25,6 +25,14 @@ public interface MembroEmpresaRepository
             Long empresaId
     );
 
+    @Query(
+            value = "SELECT id FROM membros_empresa WHERE id = :membroId FOR UPDATE",
+            nativeQuery = true
+    )
+    Optional<Long> bloquearMembroParaRegistroDePonto(
+            @Param("membroId") Long membroId
+    );
+
     List<MembroEmpresa>
     findAllByFuncionarioIdAndAtivoTrueOrderByEntrouEmDesc(
             Long funcionarioId
