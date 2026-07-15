@@ -1,11 +1,18 @@
 package com.pulsoetico.pulsoetico.models.dtos;
 
-import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
-import com.pulsoetico.pulsoetico.models.dtos.*;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 
 public record ResponderFormularioRequest(
-        @NotEmpty
-        List<RespostaItemRequest> respostas
-) {
+
+        @NotEmpty(
+                message = "As respostas são obrigatórias"
+        )
+        List<@Valid RespostaPerguntaRequest> respostas
+
+){
 }
+
+ 

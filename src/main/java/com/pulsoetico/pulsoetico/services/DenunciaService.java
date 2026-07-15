@@ -15,6 +15,7 @@ import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.dtos.DenunciaRequest;
 import com.pulsoetico.pulsoetico.repositories.DenunciaRepository;
 
+
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
@@ -34,35 +35,36 @@ public class DenunciaService {
     }
 
     @Transactional
-    public Denuncia registrarAnonimamente(
-            DenunciaRequest request,
-            Funcionario funcionarioLogado,
-            Long empresaId
-    ) {
-        MembroEmpresa membro = autorizacao.exigirPermissao(
-                empresaId,
-                funcionarioLogado,
-                Permissoes.RESPONDER_DENUNCIAS
+public Denuncia registrarAnonimamente(
+        DenunciaRequest request,
+        Funcionario funcionarioLogado,
+        Long empresaId
+) {
+    MembroEmpresa membro = autorizacao.exigirMembro(
+            empresaId,
+            funcionarioLogado
+    );
+
+    Setor setor = membro.getSetor();
+
+    if (setor == null) {
+        throw new EntityNotFoundException(
+                "Você ainda não possui setor nesta empresa"
         );
-
-        Setor setor = membro.getSetor();
-
-        if (setor == null) {
-            throw new EntityNotFoundException(
-                    "Você ainda não possui setor nesta empresa"
-            );
-        }
-
-        Denuncia denuncia = Denuncia.builder()
-                .setor(setor)
-                .tipo(request.tipo().trim())
-                .descricao(
-                        normalizarDescricao(request.descricao())
-                )
-                .build();
-
-        return denunciaRepository.save(denuncia);
     }
+
+    Denuncia denuncia = Denuncia.builder()
+            .setor(setor)
+            .tipo(request.tipo().trim())
+            .descricao(
+                    normalizarDescricao(
+                            request.descricao()
+                    )
+            )
+            .build();
+
+    return denunciaRepository.save(denuncia);
+}
 
     @Transactional(readOnly = true)
     public List<Denuncia> listarRecentesDaEmpresa(

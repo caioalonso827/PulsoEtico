@@ -81,6 +81,8 @@ public final class EmpresaDtos {
     ) {
     }
 
+    
+
     public record AtualizarSetorMembroRequest(
 
         @Positive(message = "O setorId deve ser um número positivo")

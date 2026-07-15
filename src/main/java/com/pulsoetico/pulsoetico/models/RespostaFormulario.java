@@ -47,7 +47,7 @@ public class RespostaFormulario {
     private Long id;
 
     @ManyToOne(
-            fetch = FetchType.LAZY,
+            fetch = FetchType.EAGER,
             optional = false
     )
     @JoinColumn(
@@ -57,7 +57,7 @@ public class RespostaFormulario {
     private AplicacaoFormulario aplicacao;
 
     @ManyToOne(
-            fetch = FetchType.LAZY,
+            fetch = FetchType.EAGER,
             optional = false
     )
     @JoinColumn(

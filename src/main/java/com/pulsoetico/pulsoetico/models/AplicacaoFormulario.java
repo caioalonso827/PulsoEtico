@@ -16,7 +16,8 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-
+import java.time.Instant;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,7 +38,7 @@ public class AplicacaoFormulario {
     private Long id;
 
     @ManyToOne(
-            fetch = FetchType.LAZY,
+            fetch = FetchType.EAGER,
             optional = false
     )
     @JoinColumn(
@@ -57,7 +58,7 @@ public class AplicacaoFormulario {
     private FormularioModelo formulario;
 
     @ManyToOne(
-            fetch = FetchType.LAZY,
+            fetch = FetchType.EAGER,
             optional = false
     )
     @JoinColumn(
@@ -66,7 +67,7 @@ public class AplicacaoFormulario {
     )
     private MembroEmpresa liberadoPor;
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "aplicacao_formulario_setores",
             joinColumns = @JoinColumn(
@@ -115,26 +116,41 @@ public class AplicacaoFormulario {
         criadoEm = Instant.now();
     }
 
-    public StatusAplicacaoFormulario getStatusAtual() {
-        if (canceladoEm != null) {
-            return StatusAplicacaoFormulario.CANCELADO;
-        }
-
-        Instant agora = Instant.now();
-
-        if (agora.isBefore(inicioEm)) {
-            return StatusAplicacaoFormulario.AGENDADO;
-        }
-
-        if (agora.isAfter(fimEm)) {
-            return StatusAplicacaoFormulario.ENCERRADO;
-        }
-
-        return StatusAplicacaoFormulario.ATIVO;
-    }
 
     public boolean estaAtivo() {
         return getStatusAtual()
                 == StatusAplicacaoFormulario.ATIVO;
     }
+
+        @Column(name = "encerrado_em")
+        private Instant encerradoEm;
+
+        @ManyToOne(fetch = FetchType.EAGER)
+        @JoinColumn(name = "encerrado_por_id")
+        private MembroEmpresa encerradoPor;
+
+
+        @Transient
+        public StatusAplicacaoFormulario getStatusAtual() {
+        Instant agora = Instant.now();
+
+        if (canceladoEm != null) {
+                return StatusAplicacaoFormulario.CANCELADO;
+        }
+
+        if (encerradoEm != null) {
+                return StatusAplicacaoFormulario.ENCERRADO;
+        }
+
+        if (agora.isBefore(inicioEm)) {
+                return StatusAplicacaoFormulario.AGENDADO;
+        }
+
+        if (!agora.isBefore(fimEm)) {
+                return StatusAplicacaoFormulario.ENCERRADO;
+        }
+
+        return StatusAplicacaoFormulario.ATIVO;
+        }
+
 }

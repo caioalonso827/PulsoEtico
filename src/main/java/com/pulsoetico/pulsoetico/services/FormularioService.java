@@ -10,28 +10,34 @@ import com.pulsoetico.pulsoetico.models.dtos.*;
 import org.springframework.stereotype.Service;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class FormularioService {
 
     private final AutorizacaoEmpresaService autorizacao;
     private final FormularioModeloRepository formularioRepository;
-    private final AplicacaoFormularioRepository aplicacaoRepository;
+    private final AplicacaoFormularioRepository aplicacaoFormularioRepository;
     private final SetorRepository setorRepository;
     private final RespostaFormularioRepository respostaRepository;
+    private final MembroEmpresaRepository membroEmpresaRepository;
 
     public FormularioService(
             AutorizacaoEmpresaService autorizacao,
             FormularioModeloRepository formularioRepository,
-            AplicacaoFormularioRepository aplicacaoRepository,
+            AplicacaoFormularioRepository aplicacaoFormularioRepository,
             SetorRepository setorRepository,
-            RespostaFormularioRepository respostaRepository
+            RespostaFormularioRepository respostaRepository,
+            MembroEmpresaRepository membroEmpresaRepository
     ) {
         this.autorizacao = autorizacao;
         this.formularioRepository = formularioRepository;
-        this.aplicacaoRepository = aplicacaoRepository;
+        this.aplicacaoFormularioRepository = aplicacaoFormularioRepository;
         this.setorRepository = setorRepository;
         this.respostaRepository = respostaRepository;
+        this.membroEmpresaRepository = membroEmpresaRepository;
     }
 
     @Transactional
@@ -103,7 +109,7 @@ public class FormularioService {
                         )
                         .build();
 
-        return aplicacaoRepository.save(aplicacao);
+        return aplicacaoFormularioRepository.save(aplicacao);
     }
 
 @Transactional
@@ -119,7 +125,7 @@ public void cancelar(
     );
 
     AplicacaoFormulario aplicacao =
-            aplicacaoRepository
+            aplicacaoFormularioRepository
                     .findByIdAndEmpresaId(
                             aplicacaoId,
                             empresaId
@@ -139,7 +145,7 @@ public void cancelar(
     }
 
     aplicacao.setCanceladoEm(Instant.now());
-    aplicacaoRepository.save(aplicacao);
+    aplicacaoFormularioRepository.save(aplicacao);
 }
 @Transactional(readOnly = true)
 public List<AplicacaoFormulario> listarDisponiveis(
@@ -159,7 +165,7 @@ public List<AplicacaoFormulario> listarDisponiveis(
         );
     }
 
-    return aplicacaoRepository
+    return aplicacaoFormularioRepository
             .encontrarAtivasParaSetor(
                     empresaId,
                     membro.getSetor().getId(),
@@ -175,4 +181,270 @@ public List<AplicacaoFormulario> listarDisponiveis(
             )
             .toList();
 }
+
+@Transactional
+public void responderFormulario(
+        Long empresaId,
+        Long aplicacaoId,
+        ResponderFormularioRequest request,
+        Funcionario usuario
+) {
+    MembroEmpresa membro =
+            autorizacao.exigirPermissao(
+                    empresaId,
+                    usuario,
+                    Permissoes.RESPONDER_PESQUISAS
+            );
+
+    AplicacaoFormulario aplicacao =
+            aplicacaoFormularioRepository
+                    .findByIdAndEmpresa_Id(
+                            aplicacaoId,
+                            empresaId
+                    )
+                    .orElseThrow(() ->
+                            new EntityNotFoundException(
+                                    "Aplicação de formulário não encontrada"
+                            )
+                    );
+
+    // Impede resposta em formulário cancelado,
+    // encerrado, agendado ou expirado.
+    validarAplicacaoAtiva(aplicacao);
+
+    if (membro.getSetor() == null) {
+        throw new IllegalArgumentException(
+                "Você ainda não possui setor nesta empresa"
+        );
+    }
+
+    boolean formularioLiberadoParaSetor =
+            aplicacao.getSetores()
+                    .stream()
+                    .anyMatch(setor ->
+                            setor.getId().equals(
+                                    membro.getSetor().getId()
+                            )
+                    );
+
+    if (!formularioLiberadoParaSetor) {
+        throw new IllegalArgumentException(
+                "Este formulário não foi liberado para o seu setor"
+        );
+    }
+
+    if (respostaRepository
+            .existsByAplicacaoIdAndMembroId(
+                    aplicacaoId,
+                    membro.getId()
+            )) {
+
+        throw new IllegalArgumentException(
+                "Você já respondeu este formulário"
+        );
+    }
+
+    if (request.respostas() == null
+            || request.respostas().isEmpty()) {
+
+        throw new IllegalArgumentException(
+                "Nenhuma resposta foi enviada"
+        );
+    }
+
+    Map<Long, Integer> valoresPorPergunta =
+            new HashMap<>();
+
+    for (RespostaPerguntaRequest respostaRequest
+            : request.respostas()) {
+
+        if (respostaRequest.perguntaId() == null) {
+            throw new IllegalArgumentException(
+                    "O ID da pergunta é obrigatório"
+            );
+        }
+
+        if (respostaRequest.valor() == null
+                || respostaRequest.valor() < 1
+                || respostaRequest.valor() > 5) {
+
+            throw new IllegalArgumentException(
+                    "Cada resposta deve possuir um valor entre 1 e 5"
+            );
+        }
+
+        if (valoresPorPergunta.put(
+                respostaRequest.perguntaId(),
+                respostaRequest.valor()
+        ) != null) {
+
+            throw new IllegalArgumentException(
+                    "Uma mesma pergunta não pode ser respondida duas vezes"
+            );
+        }
+    }
+
+    List<PerguntaFormulario> perguntas =
+            aplicacao.getFormulario().getPerguntas();
+
+    if (valoresPorPergunta.size() != perguntas.size()) {
+        throw new IllegalArgumentException(
+                "Todas as perguntas devem ser respondidas"
+        );
+    }
+
+    for (PerguntaFormulario pergunta : perguntas) {
+        if (!valoresPorPergunta.containsKey(
+                pergunta.getId()
+        )) {
+            throw new IllegalArgumentException(
+                    "A pergunta " + pergunta.getId()
+                            + " não foi respondida"
+            );
+        }
+    }
+
+    RespostaFormulario respostaFormulario =
+            RespostaFormulario.builder()
+                    .aplicacao(aplicacao)
+                    .membro(membro)
+                    .respondidoEm(Instant.now())
+                    .respostas(new ArrayList<>())
+                    .build();
+
+    for (PerguntaFormulario pergunta : perguntas) {
+        Integer valor =
+                valoresPorPergunta.get(
+                        pergunta.getId()
+                );
+
+        RespostaPergunta respostaPergunta =
+                RespostaPergunta.builder()
+                        .respostaFormulario(
+                                respostaFormulario
+                        )
+                        .pergunta(pergunta)
+                        .valor(valor)
+                        .build();
+
+        respostaFormulario
+                .getRespostas()
+                .add(respostaPergunta);
+    }
+
+    respostaRepository.save(
+            respostaFormulario
+    );
+}
+
+@Transactional
+public void encerrarFormulario(
+        Long empresaId,
+        Long aplicacaoId,
+        Funcionario usuario
+) {
+    autorizacao.exigirPermissao(
+            empresaId,
+            usuario,
+            Permissoes.GERENCIAR_PESQUISAS
+    );
+
+    AplicacaoFormulario aplicacao =
+            aplicacaoFormularioRepository
+                    .findByIdAndEmpresa_Id(
+                            aplicacaoId,
+                            empresaId
+                    )
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Aplicação de formulário não encontrada"
+                            )
+                    );
+
+    Instant agora = Instant.now();
+
+    if (aplicacao.getCanceladoEm() != null) {
+        throw new IllegalStateException(
+                "Não é possível encerrar um formulário cancelado"
+        );
+    }
+
+    if (aplicacao.getEncerradoEm() != null) {
+        throw new IllegalStateException(
+                "Este formulário já foi encerrado"
+        );
+    }
+
+    if (!agora.isBefore(aplicacao.getFimEm())) {
+        throw new IllegalStateException(
+                "Este formulário já terminou pelo prazo definido"
+        );
+    }
+
+    if (agora.isBefore(aplicacao.getInicioEm())) {
+        throw new IllegalStateException(
+                "O formulário ainda não foi iniciado. Cancele o agendamento em vez de encerrá-lo"
+        );
+    }
+
+    MembroEmpresa membroAdministrador =
+            membroEmpresaRepository
+                    .findByEmpresa_IdAndFuncionario_Id(
+                            empresaId,
+                            usuario.getId()
+                    )
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "Membro da empresa não encontrado"
+                            )
+                    );
+
+    aplicacao.setEncerradoEm(agora);
+    aplicacao.setEncerradoPor(membroAdministrador);
+
+    aplicacaoFormularioRepository.save(aplicacao);
+}
+
+private void validarAplicacaoAtiva(
+        AplicacaoFormulario aplicacao
+) {
+    Instant agora = Instant.now();
+
+    if (aplicacao.getCanceladoEm() != null) {
+        throw new IllegalStateException(
+                "Este formulário foi cancelado"
+        );
+    }
+
+    if (aplicacao.getEncerradoEm() != null) {
+        throw new IllegalStateException(
+                "Este formulário foi encerrado e não aceita mais respostas"
+        );
+    }
+
+    if (aplicacao.getInicioEm() == null
+            || aplicacao.getFimEm() == null) {
+
+        throw new IllegalStateException(
+                "O período do formulário não foi configurado corretamente"
+        );
+    }
+
+    if (agora.isBefore(
+            aplicacao.getInicioEm()
+    )) {
+        throw new IllegalStateException(
+                "Este formulário ainda não está disponível"
+        );
+    }
+
+    if (!agora.isBefore(
+            aplicacao.getFimEm()
+    )) {
+        throw new IllegalStateException(
+                "O prazo para responder este formulário terminou"
+        );
+    }
+}
+
 }

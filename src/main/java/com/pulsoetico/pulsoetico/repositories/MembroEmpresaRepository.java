@@ -72,4 +72,9 @@ public interface MembroEmpresaRepository
             @Param("setor") Setor setor,
             @Param("momento") Instant momento
     );
+
+    Optional<MembroEmpresa> findByEmpresa_IdAndFuncionario_Id(
+        Long empresaId,
+        Long funcionarioId
+);
 }

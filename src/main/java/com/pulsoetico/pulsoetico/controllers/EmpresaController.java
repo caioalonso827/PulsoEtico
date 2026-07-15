@@ -32,6 +32,7 @@ import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
 import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
 import com.pulsoetico.pulsoetico.services.EmpresaService;
 
+
 import jakarta.validation.Valid;
 
 @RestController

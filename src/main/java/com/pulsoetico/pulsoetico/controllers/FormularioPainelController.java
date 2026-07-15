@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.PatchMapping;
 import com.pulsoetico.pulsoetico.models.AplicacaoFormulario;
 import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
 import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
@@ -48,4 +48,18 @@ public class FormularioPainelController {
                         )
                 );
     }
+        @PatchMapping("/aplicacoes/{aplicacaoId}/encerrar")
+        public ResponseEntity<Void> encerrarFormulario(
+                @PathVariable Long empresaId,
+                @PathVariable Long aplicacaoId,
+                @AuthenticationPrincipal FuncionarioUserDetails userDetails
+        ) {
+        formularioService.encerrarFormulario(
+                empresaId,
+                aplicacaoId,
+                userDetails.getFuncionario()
+        );
+
+        return ResponseEntity.noContent().build();
+        }
 }

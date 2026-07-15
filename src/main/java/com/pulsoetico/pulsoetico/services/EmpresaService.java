@@ -31,6 +31,7 @@ import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.VinculoEmpresaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.SetorRequest;
 import com.pulsoetico.pulsoetico.repositories.CargoRepository;
 import com.pulsoetico.pulsoetico.repositories.EmpresaRepository;
+import com.pulsoetico.pulsoetico.repositories.FuncionarioRepository;
 import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 import com.pulsoetico.pulsoetico.repositories.SetorRepository;
 import com.pulsoetico.pulsoetico.security.JwtService;
@@ -39,6 +40,8 @@ import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class EmpresaService {
+
+    private final FuncionarioRepository funcionarioRepository;
     private static final String CARGO_ADMINISTRADOR = "Administrador";
     private static final String CARGO_COLABORADOR = "Colaborador";
 
@@ -60,13 +63,14 @@ public class EmpresaService {
             MembroEmpresaRepository membroRepository,
             SetorRepository setorRepository,
             JwtService jwtService,
-            AutorizacaoEmpresaService autorizacao
+            AutorizacaoEmpresaService autorizacao, FuncionarioRepository funcionarioRepository
     ) {
         this.empresaRepository = empresaRepository;
         this.cargoRepository = cargoRepository;
         this.membroRepository = membroRepository;
         this.setorRepository = setorRepository;
         this.autorizacao = autorizacao;
+        this.funcionarioRepository = funcionarioRepository;
         this.jwtService = jwtService;
     }
 
@@ -237,20 +241,13 @@ public VinculoEmpresaResponse entrarPorCodigo(
             );
 
     if (empresa.getCodigoExpiraEm() == null
-        || Instant.now().isAfter(
-                empresa.getCodigoExpiraEm()
-        )) {
+            || Instant.now().isAfter(empresa.getCodigoExpiraEm())) {
 
-    empresa.setCodigoConvite(null);
-    empresa.setCodigoGeradoEm(null);
-    empresa.setCodigoExpiraEm(null);
 
-    empresaRepository.save(empresa);
+        empresaRepository.save(empresa);
 
-    throw new IllegalArgumentException(
-            "Código expirado"
-    );
-}
+        throw new IllegalArgumentException("Código expirado");
+    }
         if (membroRepository
                 .findByEmpresaIdAndFuncionarioIdAndAtivoTrue(
                         empresa.getId(),
@@ -290,6 +287,10 @@ public VinculoEmpresaResponse entrarPorCodigo(
     // Também não mutamos mais Funcionario.papel globalmente.
     String novoToken = jwtService.gerarToken(usuario, membro);
 
+    empresa.setCodigoConvite(null);
+    empresa.setCodigoGeradoEm(null);
+    empresa.setCodigoExpiraEm(null);
+    empresaRepository.save(empresa);
 
     return new VinculoEmpresaResponse(
             converterEmpresa(membro),
@@ -522,36 +523,6 @@ public VinculoEmpresaResponse selecionar(
     }
 
     @Transactional
-public MembroResponse atualizarSetorMembro(
-        Long empresaId,
-        Long membroId,
-        AtualizarSetorMembroRequest request,
-        Funcionario usuario
-) {
-    autorizacao.exigirPermissao(
-            empresaId,
-            usuario,
-            Permissoes.GERENCIAR_MEMBROS
-    );
-
-    MembroEmpresa membro =
-            buscarMembro(empresaId, membroId);
-
-    Setor setor = request.setorId() == null
-            ? null
-            : buscarSetor(
-                    empresaId,
-                    request.setorId()
-            );
-
-    membro.setSetor(setor);
-
-    return MembroResponse.from(
-            membroRepository.save(membro)
-    );
-}
-
-    @Transactional
     public void removerMembro(
             Long empresaId,
             Long membroId,
@@ -663,6 +634,38 @@ public MembroResponse atualizarSetorMembro(
                 setorRepository.save(setor)
         );
     }
+
+    @Transactional
+public MembroResponse atualizarSetorMembro(
+        Long empresaId,
+        Long membroId,
+        AtualizarSetorMembroRequest request,
+        Funcionario usuario
+) {
+    autorizacao.exigirPermissao(
+            empresaId,
+            usuario,
+            Permissoes.GERENCIAR_MEMBROS
+    );
+
+    MembroEmpresa membro = buscarMembro(
+            empresaId,
+            membroId
+    );
+
+    Setor setor = request.setorId() == null
+            ? null
+            : buscarSetor(
+                    empresaId,
+                    request.setorId()
+            );
+
+    membro.setSetor(setor);
+
+    return MembroResponse.from(
+            membroRepository.save(membro)
+    );
+}
 
     @Transactional
     public void excluirSetor(
