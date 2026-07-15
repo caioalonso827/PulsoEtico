@@ -24,104 +24,118 @@ import jakarta.transaction.Transactional;
 @Service
 public class AuthService {
 
-        private final AuthenticationManager authenticationManager;
-        private final FuncionarioRepository funcionarioRepository;
-        private final MembroEmpresaRepository membroEmpresaRepository;
-        private final JwtService jwtService;
-        private final PasswordEncoder passwordEncoder;
-        private final CodigoVerificacaoService codigoVerificacaoService;
+    private final AuthenticationManager authenticationManager;
+    private final FuncionarioRepository funcionarioRepository;
+    private final MembroEmpresaRepository membroEmpresaRepository;
+    private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
+    private final CodigoVerificacaoService codigoVerificacaoService;
 
-        public AuthService(
-                        AuthenticationManager authenticationManager,
-                        FuncionarioRepository funcionarioRepository,
-                        MembroEmpresaRepository membroEmpresaRepository,
-                        JwtService jwtService,
-                        PasswordEncoder passwordEncoder,
-                        CodigoVerificacaoService codigoVerificacaoService) {
-                this.authenticationManager = authenticationManager;
-                this.funcionarioRepository = funcionarioRepository;
-                this.membroEmpresaRepository = membroEmpresaRepository;
-                this.jwtService = jwtService;
-                this.passwordEncoder = passwordEncoder;
-                this.codigoVerificacaoService = codigoVerificacaoService;
+    public AuthService(
+            AuthenticationManager authenticationManager,
+            FuncionarioRepository funcionarioRepository,
+            MembroEmpresaRepository membroEmpresaRepository,
+            JwtService jwtService,
+            PasswordEncoder passwordEncoder,
+            CodigoVerificacaoService codigoVerificacaoService
+    ) {
+        this.authenticationManager = authenticationManager;
+        this.funcionarioRepository = funcionarioRepository;
+        this.membroEmpresaRepository = membroEmpresaRepository;
+        this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
+        this.codigoVerificacaoService = codigoVerificacaoService;
+    }
+
+    public LoginPendenteResponse login(LoginRequest request) {
+        String email = request.email()
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            email,
+                            request.senha()
+                    )
+            );
+        } catch (org.springframework.security.core.AuthenticationException ex) {
+            throw new BadCredentialsException(
+                    "Email ou senha inválidos"
+            );
         }
 
-        public LoginPendenteResponse login(LoginRequest request) {
-                String email = request.email()
-                                .trim()
-                                .toLowerCase(Locale.ROOT);
+        funcionarioRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new BadCredentialsException(
+                                "Email ou senha inválidos"
+                        )
+                );
 
-                try {
-                        authenticationManager.authenticate(
-                                        new UsernamePasswordAuthenticationToken(
-                                                        email,
-                                                        request.senha()));
-                } catch (org.springframework.security.core.AuthenticationException ex) {
-                        throw new BadCredentialsException(
-                                        "Email ou senha inválidos");
-                }
+        codigoVerificacaoService.gerarEEnviarCodigo(email);
 
-                funcionarioRepository.findByEmailWithSetor(email)
-                                .orElseThrow(() -> new BadCredentialsException(
-                                                "Email ou senha inválidos"));
+        return new LoginPendenteResponse(
+                true,
+                email,
+                "Código enviado para o email"
+        );
+    }
 
-                codigoVerificacaoService.gerarEEnviarCodigo(email);
+    public LoginResponse verificarCodigo(
+            VerificarCodigoRequest request
+    ) {
+        CodigoVerificacao codigoVerificacao =
+                codigoVerificacaoService.validarCodigo(
+                        request.codigo()
+                );
 
-                return new LoginPendenteResponse(
-                                true,
-                                email,
-                                "Código enviado para o email");
+        Funcionario funcionario = funcionarioRepository
+                .findByEmail(codigoVerificacao.getEmail())
+                .orElseThrow(() ->
+                        new BadCredentialsException(
+                                "Usuário não encontrado"
+                        )
+                );
+
+        String token = membroEmpresaRepository
+                .findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(
+                        funcionario.getId()
+                )
+                .map(membro ->
+                        jwtService.gerarToken(
+                                funcionario,
+                                membro
+                        )
+                )
+                .orElseGet(() ->
+                        jwtService.gerarToken(funcionario)
+                );
+
+        return LoginResponse.de(token, funcionario);
+    }
+
+    @Transactional
+    public LoginResponse cadastrar(CadastroRequest request) {
+        String email = request.email()
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (funcionarioRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException(
+                    "Já existe uma conta com esse email"
+            );
         }
 
-        public LoginResponse verificarCodigo(
-                        VerificarCodigoRequest request) {
-                CodigoVerificacao codigoVerificacao = codigoVerificacaoService.validarCodigo(
-                                request.codigo());
+        Funcionario funcionario = Funcionario.builder()
+                .nomeCompleto(request.nomeCompleto().trim())
+                .email(email)
+                .senha(passwordEncoder.encode(request.senha()))
+                .build();
 
-                Funcionario funcionario = funcionarioRepository
-                                .findByEmailWithSetor(
-                                                codigoVerificacao.getEmail())
-                                .orElseThrow(() -> new BadCredentialsException(
-                                                "Usuário não encontrado"));
+        funcionarioRepository.save(funcionario);
 
-                // Se a pessoa já participa de alguma empresa, o token já sai
-                // com essa empresa como ativa (a mais antiga, por padrão).
-                // Se ela participa de várias, o front deve deixar trocar
-                // depois via POST /api/empresas/{id}/selecionar.
-                String token = membroEmpresaRepository
-                                .findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(funcionario.getId())
-                                .map(membro -> jwtService.gerarToken(funcionario, membro))
-                                .orElseGet(() -> jwtService.gerarToken(funcionario));
+        String token = jwtService.gerarToken(funcionario);
 
-                return LoginResponse.de(
-                                token,
-                                funcionario);
-        }
-
-        @Transactional
-        public LoginResponse cadastrar(CadastroRequest request) {
-                String email = request.email()
-                                .trim()
-                                .toLowerCase(Locale.ROOT);
-
-                if (funcionarioRepository.existsByEmail(email)) {
-                        throw new IllegalArgumentException(
-                                        "Já existe uma conta com esse email");
-                }
-
-                Funcionario funcionario = Funcionario.builder()
-                                .nomeCompleto(request.nomeCompleto().trim())
-                                .email(email)
-                                .senha(passwordEncoder.encode(request.senha()))
-                                .papel(Funcionario.Papel.USUARIO)
-                                .build();
-
-                funcionarioRepository.save(funcionario);
-
-                String token = jwtService.gerarToken(funcionario);
-
-                return LoginResponse.de(
-                                token,
-                                funcionario);
-        }
+        return LoginResponse.de(token, funcionario);
+    }
 }
