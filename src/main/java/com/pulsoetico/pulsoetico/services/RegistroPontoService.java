@@ -15,8 +15,6 @@ import com.pulsoetico.pulsoetico.models.RegistroPonto;
 import com.pulsoetico.pulsoetico.models.dtos.RegistroPontoRequest;
 import com.pulsoetico.pulsoetico.repositories.RegistroPontoRepository;
 
-import jakarta.persistence.EntityNotFoundException;
-
 @Service
 public class RegistroPontoService {
 
@@ -53,12 +51,11 @@ public class RegistroPontoService {
                         funcionario,
                         Permissoes.REGISTRAR_PONTO
                 );
-
-        if (membro.getSetor() == null) {
-            throw new EntityNotFoundException(
-                    "Você ainda não possui setor nesta empresa"
-            );
-        }
+if (membro.getSetor() == null) {
+    throw new IllegalArgumentException(
+            "Para registrar o ponto, você precisa estar vinculado a um setor"
+    );
+}
 
         RegistroPonto.TipoRegistro proximoTipo =
                 deduzirProximoTipo(

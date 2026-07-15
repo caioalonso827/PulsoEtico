@@ -21,6 +21,14 @@ import com.pulsoetico.pulsoetico.security.JwtService;
 
 import jakarta.transaction.Transactional;
 
+/**
+ * Verificação em 2 etapas (código por email) só acontece em 2 situações:
+ *   1) No cadastro (cadastrar() não emite token direto — manda pro fluxo de código)
+ *   2) No login de um dispositivo desconhecido (sem dispositivoToken válido)
+ *
+ * Um dispositivo já verificado antes pula a etapa do código nos próximos
+ * logins, até o token de confiança expirar (90 dias) — ver DispositivoConfiavelService.
+ */
 @Service
 public class AuthService {
 
@@ -30,6 +38,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final CodigoVerificacaoService codigoVerificacaoService;
+    private final DispositivoConfiavelService dispositivoConfiavelService;
 
     public AuthService(
             AuthenticationManager authenticationManager,
@@ -37,7 +46,8 @@ public class AuthService {
             MembroEmpresaRepository membroEmpresaRepository,
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
-            CodigoVerificacaoService codigoVerificacaoService
+            CodigoVerificacaoService codigoVerificacaoService,
+            DispositivoConfiavelService dispositivoConfiavelService
     ) {
         this.authenticationManager = authenticationManager;
         this.funcionarioRepository = funcionarioRepository;
@@ -45,9 +55,15 @@ public class AuthService {
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.codigoVerificacaoService = codigoVerificacaoService;
+        this.dispositivoConfiavelService = dispositivoConfiavelService;
     }
 
-    public LoginPendenteResponse login(LoginRequest request) {
+    /**
+     * Retorna LoginResponse (login concluído, dispositivo já confiável) ou
+     * LoginPendenteResponse (dispositivo novo/desconhecido, precisa do código).
+     * O front distingue os dois pelo campo "requerVerificacao" em ambos.
+     */
+    public Object login(LoginRequest request) {
         String email = request.email()
                 .trim()
                 .toLowerCase(Locale.ROOT);
@@ -65,13 +81,23 @@ public class AuthService {
             );
         }
 
-        funcionarioRepository.findByEmail(email)
+        Funcionario funcionario = funcionarioRepository.findByEmail(email)
                 .orElseThrow(() ->
                         new BadCredentialsException(
                                 "Email ou senha inválidos"
                         )
                 );
 
+        boolean dispositivoConfiavel =
+                dispositivoConfiavelService.validarDispositivo(funcionario, request.dispositivoToken());
+
+        if (dispositivoConfiavel) {
+            // Já verificado nesse dispositivo antes (e ainda dentro dos 90 dias) — pula o código.
+            String token = gerarTokenComEmpresaAtiva(funcionario);
+            return LoginResponse.de(token, funcionario, null);
+        }
+
+        // Dispositivo novo/desconhecido (ou token de dispositivo ausente/expirado) — pede código.
         codigoVerificacaoService.gerarEEnviarCodigo(email);
 
         return new LoginPendenteResponse(
@@ -81,41 +107,32 @@ public class AuthService {
         );
     }
 
-    public LoginResponse verificarCodigo(
-            VerificarCodigoRequest request
-    ) {
+    /** Confirma o código (de um login pendente OU de um cadastro recém-feito) e emite o token. */
+    public LoginResponse verificarCodigo(VerificarCodigoRequest request) {
         CodigoVerificacao codigoVerificacao =
-                codigoVerificacaoService.validarCodigo(
-                        request.codigo()
-                );
+                codigoVerificacaoService.validarCodigo(request.codigo());
 
         Funcionario funcionario = funcionarioRepository
                 .findByEmail(codigoVerificacao.getEmail())
                 .orElseThrow(() ->
-                        new BadCredentialsException(
-                                "Usuário não encontrado"
-                        )
+                        new BadCredentialsException("Usuário não encontrado")
                 );
 
-        String token = membroEmpresaRepository
-                .findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(
-                        funcionario.getId()
-                )
-                .map(membro ->
-                        jwtService.gerarToken(
-                                funcionario,
-                                membro
-                        )
-                )
-                .orElseGet(() ->
-                        jwtService.gerarToken(funcionario)
-                );
+        String token = gerarTokenComEmpresaAtiva(funcionario);
 
-        return LoginResponse.de(token, funcionario);
+        // Verificação concluída com sucesso = dispositivo passa a ser confiável por 90 dias.
+        String dispositivoToken = dispositivoConfiavelService.gerarNovoDispositivo(funcionario, null);
+
+        return LoginResponse.de(token, funcionario, dispositivoToken);
     }
 
+    /**
+     * Cria a conta mas NÃO emite token — sempre manda pro fluxo de código
+     * (verificação obrigatória no cadastro), reaproveitando o mesmo
+     * verificarCodigo() de cima pra concluir e já sair com um dispositivo confiável.
+     */
     @Transactional
-    public LoginResponse cadastrar(CadastroRequest request) {
+    public LoginPendenteResponse cadastrar(CadastroRequest request) {
         String email = request.email()
                 .trim()
                 .toLowerCase(Locale.ROOT);
@@ -134,8 +151,19 @@ public class AuthService {
 
         funcionarioRepository.save(funcionario);
 
-        String token = jwtService.gerarToken(funcionario);
+        codigoVerificacaoService.gerarEEnviarCodigo(email);
 
-        return LoginResponse.de(token, funcionario);
+        return new LoginPendenteResponse(
+                true,
+                email,
+                "Conta criada! Enviamos um código de verificação para o seu email."
+        );
+    }
+
+    private String gerarTokenComEmpresaAtiva(Funcionario funcionario) {
+        return membroEmpresaRepository
+                .findFirstByFuncionarioIdAndAtivoTrueOrderByEntrouEmAsc(funcionario.getId())
+                .map(membro -> jwtService.gerarToken(funcionario, membro))
+                .orElseGet(() -> jwtService.gerarToken(funcionario));
     }
 }

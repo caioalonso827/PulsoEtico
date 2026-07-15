@@ -28,8 +28,14 @@ public class AuthController {
         this.authService = authService;
     }
 
+    /**
+     * Retorna 200 com um de dois formatos (o front distingue pelo campo
+     * "requerVerificacao" presente nos dois):
+     *  - LoginResponse (requerVerificacao: false) — dispositivo já confiável, login concluído.
+     *  - LoginPendenteResponse (requerVerificacao: true) — dispositivo novo, precisa do código.
+     */
     @PostMapping("/login")
-    public ResponseEntity<LoginPendenteResponse> login(
+    public ResponseEntity<Object> login(
             @Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(
                 authService.login(request));
@@ -48,8 +54,9 @@ public class AuthController {
                 authService.verificarCodigo(request));
     }
 
+    /** Sempre pede código de verificação (nunca emite token direto) — completa com POST /verificar-codigo. */
     @PostMapping("/cadastro")
-    public ResponseEntity<LoginResponse> cadastrar(
+    public ResponseEntity<LoginPendenteResponse> cadastrar(
             @Valid @RequestBody CadastroRequest request) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)

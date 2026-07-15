@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.pulsoetico.pulsoetico.models.Setor;
 
+import java.util.Collection;
+import java.util.List;
+
 public interface SetorRepository extends JpaRepository<Setor, Long> {
 
     /*
@@ -32,4 +35,9 @@ public interface SetorRepository extends JpaRepository<Setor, Long> {
     List<Setor> findAllByEmpresaIdOrderByNomeAsc(Long empresaId);
 
     long countByEmpresaId(Long empresaId);
+
+    List<Setor> findAllByEmpresaIdAndIdIn(
+        Long empresaId,
+        Collection<Long> ids
+);
 }

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pulsoetico.pulsoetico.models.Permissoes;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.AtualizarMembroRequest;
+import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.AtualizarSetorMembroRequest;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CargoRequest;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CargoResponse;
 import com.pulsoetico.pulsoetico.models.dtos.EmpresaDtos.CodigoConviteResponse;
@@ -187,6 +188,24 @@ public class EmpresaController {
                 principal.getFuncionario()
         );
     }
+
+    @PatchMapping("/{empresaId}/membros/{membroId}/setor")
+public MembroResponse atualizarSetorMembro(
+        @PathVariable Long empresaId,
+        @PathVariable Long membroId,
+        @Valid
+        @RequestBody
+        AtualizarSetorMembroRequest request,
+        @AuthenticationPrincipal
+        FuncionarioUserDetails principal
+) {
+    return empresaService.atualizarSetorMembro(
+            empresaId,
+            membroId,
+            request,
+            principal.getFuncionario()
+    );
+}
 
     @DeleteMapping("/{empresaId}/cargos/{cargoId}")
     public ResponseEntity<Void> excluirCargo(
