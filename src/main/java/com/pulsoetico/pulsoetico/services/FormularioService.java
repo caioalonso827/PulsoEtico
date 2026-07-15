@@ -20,6 +20,7 @@ import com.pulsoetico.pulsoetico.models.RespostaFormulario;
 import com.pulsoetico.pulsoetico.models.RespostaPergunta;
 import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.StatusAplicacaoFormulario;
+import com.pulsoetico.pulsoetico.models.dtos.AlternativaFormularioResponse;
 import com.pulsoetico.pulsoetico.models.dtos.AplicacaoFormularioResponse;
 import com.pulsoetico.pulsoetico.models.dtos.FormularioModeloResponse;
 import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
@@ -240,6 +241,66 @@ public List<AplicacaoFormularioResponse> listarDisponiveis(
             )
             .map(this::converterParaResponse)
             .toList();
+}
+
+@Transactional(readOnly = true)
+public AplicacaoFormularioResponse buscarDisponivel(
+        Long empresaId,
+        Long aplicacaoId,
+        Funcionario usuario
+) {
+    MembroEmpresa membro =
+            autorizacao.exigirPermissao(
+                    empresaId,
+                    usuario,
+                    Permissoes.RESPONDER_PESQUISAS
+            );
+
+    if (membro.getSetor() == null) {
+        throw new IllegalArgumentException(
+                "Você ainda não possui setor nesta empresa"
+        );
+    }
+
+    AplicacaoFormulario aplicacao =
+            aplicacaoFormularioRepository
+                    .findByIdAndEmpresa_Id(
+                            aplicacaoId,
+                            empresaId
+                    )
+                    .orElseThrow(() ->
+                            new EntityNotFoundException(
+                                    "Aplicação de formulário não encontrada"
+                            )
+                    );
+
+    validarAplicacaoAtiva(aplicacao);
+
+    boolean liberadoParaSetor =
+            aplicacao.getSetores()
+                    .stream()
+                    .anyMatch(setor ->
+                            setor.getId().equals(
+                                    membro.getSetor().getId()
+                            )
+                    );
+
+    if (!liberadoParaSetor) {
+        throw new IllegalArgumentException(
+                "Este formulário não foi liberado para o seu setor"
+        );
+    }
+
+    if (respostaRepository.existsByAplicacaoIdAndMembroId(
+            aplicacaoId,
+            membro.getId()
+    )) {
+        throw new IllegalArgumentException(
+                "Você já respondeu este formulário"
+        );
+    }
+
+    return converterParaResponse(aplicacao);
 }
 
 @Transactional
@@ -506,6 +567,16 @@ private void validarAplicacaoAtiva(
         );
     }
 }
+    private List<AlternativaFormularioResponse> criarAlternativas() {
+        return List.of(
+                new AlternativaFormularioResponse(1, "Nunca"),
+                new AlternativaFormularioResponse(2, "Raramente"),
+                new AlternativaFormularioResponse(3, "Às vezes"),
+                new AlternativaFormularioResponse(4, "Frequentemente"),
+                new AlternativaFormularioResponse(5, "Sempre")
+        );
+    }
+
     private FormularioModeloResponse converterModeloParaResponse(
             FormularioModelo formulario
     ) {
@@ -524,7 +595,8 @@ private void validarAplicacaoAtiva(
                                 new PerguntaFormularioResponse(
                                         pergunta.getId(),
                                         pergunta.getTexto(),
-                                        pergunta.getOrdem()
+                                        pergunta.getOrdem(),
+                                        criarAlternativas()
                                 )
                         )
                         .toList();
@@ -561,7 +633,8 @@ private void validarAplicacaoAtiva(
                             new PerguntaFormularioResponse(
                                     pergunta.getId(),
                                     pergunta.getTexto(),
-                                    pergunta.getOrdem()
+                                    pergunta.getOrdem(),
+                                    criarAlternativas()
                             )
                     )
                     .toList();
