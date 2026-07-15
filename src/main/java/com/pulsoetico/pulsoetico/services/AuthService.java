@@ -64,6 +64,18 @@ public class AuthService {
      * O front distingue os dois pelo campo "requerVerificacao" em ambos.
      */
     public Object login(LoginRequest request) {
+        return login(request, request.dispositivoToken());
+    }
+
+    /**
+     * Versão usada pelo controller quando o token foi recuperado de cookie ou
+     * cabeçalho. O cadastro não chama este método e, portanto, continua sempre
+     * exigindo código.
+     */
+    public Object login(
+            LoginRequest request,
+            String dispositivoToken
+    ) {
         String email = request.email()
                 .trim()
                 .toLowerCase(Locale.ROOT);
@@ -89,7 +101,10 @@ public class AuthService {
                 );
 
         boolean dispositivoConfiavel =
-                dispositivoConfiavelService.validarDispositivo(funcionario, request.dispositivoToken());
+                dispositivoConfiavelService.validarDispositivo(
+                        funcionario,
+                        dispositivoToken
+                );
 
         if (dispositivoConfiavel) {
             // Já verificado nesse dispositivo antes (e ainda dentro dos 90 dias) — pula o código.
@@ -109,6 +124,13 @@ public class AuthService {
 
     /** Confirma o código (de um login pendente OU de um cadastro recém-feito) e emite o token. */
     public LoginResponse verificarCodigo(VerificarCodigoRequest request) {
+        return verificarCodigo(request, null);
+    }
+
+    public LoginResponse verificarCodigo(
+            VerificarCodigoRequest request,
+            String descricaoDispositivo
+    ) {
         CodigoVerificacao codigoVerificacao =
                 codigoVerificacaoService.validarCodigo(request.codigo());
 
@@ -121,7 +143,11 @@ public class AuthService {
         String token = gerarTokenComEmpresaAtiva(funcionario);
 
         // Verificação concluída com sucesso = dispositivo passa a ser confiável por 90 dias.
-        String dispositivoToken = dispositivoConfiavelService.gerarNovoDispositivo(funcionario, null);
+        String dispositivoToken =
+                dispositivoConfiavelService.gerarNovoDispositivo(
+                        funcionario,
+                        descricaoDispositivo
+                );
 
         return LoginResponse.de(token, funcionario, dispositivoToken);
     }

@@ -15,7 +15,9 @@ public record LoginResponse(
          * esse valor e mandar em LoginRequest.dispositivoToken nos próximos
          * logins, pra pular a verificação. Quando o login já veio de um
          * dispositivo confiável existente, esse campo vem null (não precisa
-         * trocar o token que o cliente já tinha).
+         * trocar o token que o cliente já tinha). Após a verificação, a API
+         * também envia o mesmo valor em cookie HttpOnly e no cabeçalho
+         * X-Dispositivo-Token.
          */
         String dispositivoToken
 ) {

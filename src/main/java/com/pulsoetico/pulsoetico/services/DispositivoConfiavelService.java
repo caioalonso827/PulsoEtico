@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +26,24 @@ import com.pulsoetico.pulsoetico.repositories.DispositivoConfiavelRepository;
 @Service
 public class DispositivoConfiavelService {
 
-    private static final int DIAS_DE_CONFIANCA = 90;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final DispositivoConfiavelRepository dispositivoConfiavelRepository;
+    private final int diasDeConfianca;
 
-    public DispositivoConfiavelService(DispositivoConfiavelRepository dispositivoConfiavelRepository) {
+    public DispositivoConfiavelService(
+            DispositivoConfiavelRepository dispositivoConfiavelRepository,
+            @Value("${auth.dispositivo.dias-confianca:90}")
+            int diasDeConfianca
+    ) {
+        if (diasDeConfianca <= 0) {
+            throw new IllegalArgumentException(
+                    "auth.dispositivo.dias-confianca deve ser maior que zero"
+            );
+        }
+
         this.dispositivoConfiavelRepository = dispositivoConfiavelRepository;
+        this.diasDeConfianca = diasDeConfianca;
     }
 
     /**
@@ -47,8 +59,8 @@ public class DispositivoConfiavelService {
         DispositivoConfiavel dispositivo = DispositivoConfiavel.builder()
                 .funcionario(funcionario)
                 .tokenHash(hash(tokenBruto))
-                .descricao(descricao)
-                .expiraEm(agora.plus(DIAS_DE_CONFIANCA, ChronoUnit.DAYS))
+                .descricao(normalizarDescricao(descricao))
+                .expiraEm(agora.plus(diasDeConfianca, ChronoUnit.DAYS))
                 .ultimoUsoEm(agora)
                 .build();
 
@@ -67,15 +79,33 @@ public class DispositivoConfiavelService {
             return false;
         }
 
+        String tokenNormalizado = tokenBruto.trim();
+        Instant agora = Instant.now();
+
         return dispositivoConfiavelRepository
                 .findByTokenHashAndFuncionarioIdAndExpiraEmAfter(
-                        hash(tokenBruto), funcionario.getId(), Instant.now())
+                        hash(tokenNormalizado),
+                        funcionario.getId(),
+                        agora
+                )
                 .map(dispositivo -> {
-                    dispositivo.setUltimoUsoEm(Instant.now());
+                    dispositivo.setUltimoUsoEm(agora);
                     dispositivoConfiavelRepository.save(dispositivo);
                     return true;
                 })
                 .orElse(false);
+    }
+
+
+    private String normalizarDescricao(String descricao) {
+        if (descricao == null || descricao.isBlank()) {
+            return null;
+        }
+
+        String valor = descricao.trim();
+        return valor.length() <= 150
+                ? valor
+                : valor.substring(0, 150);
     }
 
     private String gerarTokenAleatorio() {

@@ -1,18 +1,37 @@
 package com.pulsoetico.pulsoetico.services;
-
-import com.pulsoetico.pulsoetico.repositories.*;
-import com.pulsoetico.pulsoetico.models.*;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.List;
-import com.pulsoetico.pulsoetico.models.dtos.*;
-import org.springframework.stereotype.Service;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.pulsoetico.pulsoetico.models.AplicacaoFormulario;
+import com.pulsoetico.pulsoetico.models.FormularioModelo;
+import com.pulsoetico.pulsoetico.models.Funcionario;
+import com.pulsoetico.pulsoetico.models.MembroEmpresa;
+import com.pulsoetico.pulsoetico.models.PerguntaFormulario;
+import com.pulsoetico.pulsoetico.models.Permissoes;
+import com.pulsoetico.pulsoetico.models.RespostaFormulario;
+import com.pulsoetico.pulsoetico.models.RespostaPergunta;
+import com.pulsoetico.pulsoetico.models.Setor;
+import com.pulsoetico.pulsoetico.models.StatusAplicacaoFormulario;
+import com.pulsoetico.pulsoetico.models.dtos.AplicacaoFormularioResponse;
+import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
+import com.pulsoetico.pulsoetico.models.dtos.PerguntaFormularioResponse;
+import com.pulsoetico.pulsoetico.models.dtos.ResponderFormularioRequest;
+import com.pulsoetico.pulsoetico.models.dtos.RespostaPerguntaRequest;
+import com.pulsoetico.pulsoetico.repositories.AplicacaoFormularioRepository;
+import com.pulsoetico.pulsoetico.repositories.FormularioModeloRepository;
+import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
+import com.pulsoetico.pulsoetico.repositories.RespostaFormularioRepository;
+import com.pulsoetico.pulsoetico.repositories.SetorRepository;
+
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class FormularioService {
@@ -41,7 +60,7 @@ public class FormularioService {
     }
 
     @Transactional
-    public AplicacaoFormulario liberar(
+    public AplicacaoFormularioResponse liberar(
             Long empresaId,
             LiberarFormularioRequest request,
             Funcionario usuario
@@ -109,7 +128,10 @@ public class FormularioService {
                         )
                         .build();
 
-        return aplicacaoFormularioRepository.save(aplicacao);
+        AplicacaoFormulario salva =
+                aplicacaoFormularioRepository.save(aplicacao);
+
+        return converterParaResponse(salva);
     }
 
 @Transactional
@@ -148,7 +170,7 @@ public void cancelar(
     aplicacaoFormularioRepository.save(aplicacao);
 }
 @Transactional(readOnly = true)
-public List<AplicacaoFormulario> listarDisponiveis(
+public List<AplicacaoFormularioResponse> listarDisponiveis(
         Long empresaId,
         Funcionario usuario
 ) {
@@ -179,6 +201,7 @@ public List<AplicacaoFormulario> listarDisponiveis(
                                     membro.getId()
                             )
             )
+            .map(this::converterParaResponse)
             .toList();
 }
 
@@ -445,6 +468,56 @@ private void validarAplicacaoAtiva(
                 "O prazo para responder este formulário terminou"
         );
     }
+}
+        private AplicacaoFormularioResponse converterParaResponse(
+        AplicacaoFormulario aplicacao
+) {
+    FormularioModelo formulario =
+            aplicacao.getFormulario();
+
+    List<PerguntaFormularioResponse> perguntas =
+            formulario.getPerguntas()
+                    .stream()
+                    .sorted(
+                            java.util.Comparator.comparing(
+                                    PerguntaFormulario::getOrdem,
+                                    java.util.Comparator.nullsLast(
+                                            java.util.Comparator.naturalOrder()
+                                    )
+                            )
+                    )
+                    .map(pergunta ->
+                            new PerguntaFormularioResponse(
+                                    pergunta.getId(),
+                                    pergunta.getTexto(),
+                                    pergunta.getOrdem()
+                            )
+                    )
+                    .toList();
+
+    List<Long> setorIds =
+            aplicacao.getSetores()
+                    .stream()
+                    .map(Setor::getId)
+                    .sorted()
+                    .toList();
+
+    return new AplicacaoFormularioResponse(
+            aplicacao.getId(),
+            aplicacao.getEmpresa().getId(),
+            formulario.getId(),
+            formulario.getTipo(),
+            formulario.getTitulo(),
+            formulario.getDescricao(),
+            setorIds,
+            aplicacao.getInicioEm(),
+            aplicacao.getFimEm(),
+            aplicacao.getCanceladoEm(),
+            aplicacao.getEncerradoEm(),
+            aplicacao.getMinimoRespostas(),
+            aplicacao.getStatusAtual(),
+            perguntas
+    );
 }
 
 }
