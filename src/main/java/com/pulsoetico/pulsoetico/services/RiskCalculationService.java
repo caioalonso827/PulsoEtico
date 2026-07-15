@@ -19,17 +19,6 @@ import com.pulsoetico.pulsoetico.repositories.SetorRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
-/**
- * Calcula o Índice de Risco Psicossocial (0 a 100) de um setor — 100% automático.
- *
- * Fontes de cada componente:
- *   - Humor médio ................ CheckinHumor (check-ins dos últimos N dias)
- *   - Horas extras médias/semana .. RegistroPonto (calculado por HorasExtrasCalculatorService)
- *   - Rotatividade mensal ......... desligamentos e quadro ativo de Funcionario
- *   - Denúncias anônimas .......... registros de Denuncia dentro da janela
- *
- * Pesos (somam 100%): Humor 40% / Horas extras 30% / Rotatividade 20% / Denúncias 10%.
- */
 @Service
 public class RiskCalculationService {
 
@@ -38,8 +27,12 @@ public class RiskCalculationService {
     private static final double PESO_ROTATIVIDADE = 0.20;
     private static final double PESO_DENUNCIAS = 0.10;
 
-    private static final double TETO_HORAS_EXTRAS_SEMANA = 20.0;
-    private static final double TETO_ROTATIVIDADE_PERCENTUAL = 30.0;
+    private static final double TETO_HORAS_EXTRAS_SEMANA =
+            20.0;
+
+    private static final double TETO_ROTATIVIDADE_PERCENTUAL =
+            30.0;
+
     private static final int TETO_DENUNCIAS = 5;
 
     private static final double LIMITE_ATENCAO = 40.0;
@@ -65,16 +58,23 @@ public class RiskCalculationService {
             AutorizacaoEmpresaService autorizacao
     ) {
         this.setorRepository = setorRepository;
-        this.checkinHumorRepository = checkinHumorRepository;
-        this.avaliacaoRiscoRepository = avaliacaoRiscoRepository;
-        this.recommendationService = recommendationService;
-        this.horasExtrasCalculatorService = horasExtrasCalculatorService;
+        this.checkinHumorRepository =
+                checkinHumorRepository;
+
+        this.avaliacaoRiscoRepository =
+                avaliacaoRiscoRepository;
+
+        this.recommendationService =
+                recommendationService;
+
+        this.horasExtrasCalculatorService =
+                horasExtrasCalculatorService;
+
         this.funcionarioService = funcionarioService;
         this.denunciaService = denunciaService;
         this.autorizacao = autorizacao;
     }
 
-    /** Dispara manualmente ("recalcular agora"), usado pelo endpoint POST /avaliacoes-risco. */
     @Transactional
     public AvaliacaoRisco calcularRisco(
             Long empresaId,
@@ -88,7 +88,10 @@ public class RiskCalculationService {
         );
 
         Setor setor = setorRepository
-                .findByIdAndEmpresaId(request.setorId(), empresaId)
+                .findByIdAndEmpresaId(
+                        request.setorId(),
+                        empresaId
+                )
                 .orElseThrow(() ->
                         new EntityNotFoundException(
                                 "Setor não encontrado nesta empresa"
@@ -101,82 +104,184 @@ public class RiskCalculationService {
         );
     }
 
-    /** Usado pelo job agendado (RiskCalculationScheduler), que roda pra todos os setores sozinho. */
     @Transactional
-    public AvaliacaoRisco calcularRiscoDoSetor(Setor setor, int diasJanela) {
-        Instant desde = Instant.now().minus(diasJanela, ChronoUnit.DAYS);
+    public AvaliacaoRisco calcularRiscoDoSetor(
+            Setor setor,
+            int diasJanela
+    ) {
+        Instant desde = Instant.now().minus(
+                diasJanela,
+                ChronoUnit.DAYS
+        );
+
         Instant agora = Instant.now();
 
-        List<CheckinHumor> checkins = checkinHumorRepository.findBySetorAndCriadoEmAfter(setor, desde);
-        double mediaSeveridadeHumor = calcularMediaSeveridadeHumor(checkins);
+        List<CheckinHumor> checkins =
+                checkinHumorRepository
+                        .findBySetorAndCriadoEmAfter(
+                                setor,
+                                desde
+                        );
+
+        double mediaSeveridadeHumor =
+                calcularMediaSeveridadeHumor(checkins);
 
         double horasExtrasMediasSemana =
-                horasExtrasCalculatorService.calcularMediaHorasExtrasSemana(setor, desde, agora);
+                horasExtrasCalculatorService
+                        .calcularMediaHorasExtrasSemana(
+                                setor,
+                                desde,
+                                agora
+                        );
 
-        double taxaRotatividadeMensal = funcionarioService.calcularTaxaRotatividade(setor, desde, agora);
-        int quantidadeDenuncias = denunciaService.contarNoPeriodo(setor, desde, agora);
+        double taxaRotatividadeMensal =
+                funcionarioService
+                        .calcularTaxaRotatividade(
+                                setor,
+                                desde,
+                                agora
+                        );
 
-        double notaHumor = normalizarSeveridadeHumor(mediaSeveridadeHumor);
-        double notaHorasExtras = normalizar(horasExtrasMediasSemana, TETO_HORAS_EXTRAS_SEMANA);
-        double notaRotatividade = normalizar(taxaRotatividadeMensal, TETO_ROTATIVIDADE_PERCENTUAL);
-        double notaDenuncias = normalizar(quantidadeDenuncias, TETO_DENUNCIAS);
+        int quantidadeDenuncias =
+                denunciaService.contarNoPeriodo(
+                        setor,
+                        desde,
+                        agora
+                );
+
+        double notaHumor =
+                normalizarSeveridadeHumor(
+                        mediaSeveridadeHumor
+                );
+
+        double notaHorasExtras = normalizar(
+                horasExtrasMediasSemana,
+                TETO_HORAS_EXTRAS_SEMANA
+        );
+
+        double notaRotatividade = normalizar(
+                taxaRotatividadeMensal,
+                TETO_ROTATIVIDADE_PERCENTUAL
+        );
+
+        double notaDenuncias = normalizar(
+                quantidadeDenuncias,
+                TETO_DENUNCIAS
+        );
 
         double indiceRisco =
                 (notaHumor * PESO_HUMOR)
-                        + (notaHorasExtras * PESO_HORAS_EXTRAS)
-                        + (notaRotatividade * PESO_ROTATIVIDADE)
-                        + (notaDenuncias * PESO_DENUNCIAS);
+                        + (
+                            notaHorasExtras
+                                    * PESO_HORAS_EXTRAS
+                        )
+                        + (
+                            notaRotatividade
+                                    * PESO_ROTATIVIDADE
+                        )
+                        + (
+                            notaDenuncias
+                                    * PESO_DENUNCIAS
+                        );
 
-        AvaliacaoRisco avaliacao = AvaliacaoRisco.builder()
-                .setor(setor)
-                .indiceRisco(arredondar(indiceRisco))
-                .nivelRisco(classificarNivelRisco(indiceRisco))
-                .mediaHorasExtras(arredondar(horasExtrasMediasSemana))
-                .mediaSeveridadeHumor(arredondar(mediaSeveridadeHumor))
-                .taxaRotatividade(taxaRotatividadeMensal)
-                .quantidadeDenunciasAnonimas(quantidadeDenuncias)
-                .build();
+        AvaliacaoRisco avaliacao =
+                AvaliacaoRisco.builder()
+                        .setor(setor)
+                        .indiceRisco(
+                                arredondar(indiceRisco)
+                        )
+                        .nivelRisco(
+                                classificarNivelRisco(
+                                        indiceRisco
+                                )
+                        )
+                        .mediaHorasExtras(
+                                arredondar(
+                                        horasExtrasMediasSemana
+                                )
+                        )
+                        .mediaSeveridadeHumor(
+                                arredondar(
+                                        mediaSeveridadeHumor
+                                )
+                        )
+                        .taxaRotatividade(
+                                taxaRotatividadeMensal
+                        )
+                        .quantidadeDenunciasAnonimas(
+                                quantidadeDenuncias
+                        )
+                        .build();
 
-        AvaliacaoRisco salva = avaliacaoRiscoRepository.save(avaliacao);
+        AvaliacaoRisco salva =
+                avaliacaoRiscoRepository.save(avaliacao);
 
-        if (salva.getNivelRisco() != AvaliacaoRisco.NivelRisco.BAIXO) {
-            recommendationService.gerarRecomendacoes(salva);
+        if (salva.getNivelRisco()
+                != AvaliacaoRisco.NivelRisco.BAIXO) {
+
+            recommendationService
+                    .gerarRecomendacoes(salva);
         }
 
         return salva;
     }
 
-    private double calcularMediaSeveridadeHumor(List<CheckinHumor> checkins) {
+    private double calcularMediaSeveridadeHumor(
+            List<CheckinHumor> checkins
+    ) {
         if (checkins.isEmpty()) {
             return 2.5;
         }
+
         return checkins.stream()
-                .mapToInt(c -> c.getNivelHumor().getSeveridade())
+                .mapToInt(
+                        checkin ->
+                                checkin
+                                        .getNivelHumor()
+                                        .getSeveridade()
+                )
                 .average()
                 .orElse(2.5);
     }
 
-    private double normalizarSeveridadeHumor(double severidadeMedia) {
-        double notaBruta = ((severidadeMedia - 1) / 4.0) * 100;
+    private double normalizarSeveridadeHumor(
+            double severidadeMedia
+    ) {
+        double notaBruta =
+                ((severidadeMedia - 1) / 4.0)
+                        * 100;
+
         return limitarEntre0e100(notaBruta);
     }
 
-    private double normalizar(double valor, double teto) {
-        double notaBruta = (valor / teto) * 100;
+    private double normalizar(
+            double valor,
+            double teto
+    ) {
+        double notaBruta =
+                (valor / teto) * 100;
+
         return limitarEntre0e100(notaBruta);
     }
 
     private double limitarEntre0e100(double valor) {
-        return Math.max(0, Math.min(100, valor));
+        return Math.max(
+                0,
+                Math.min(100, valor)
+        );
     }
 
-    private AvaliacaoRisco.NivelRisco classificarNivelRisco(double indiceRisco) {
+    private AvaliacaoRisco.NivelRisco
+    classificarNivelRisco(double indiceRisco) {
+
         if (indiceRisco >= LIMITE_ALTO) {
             return AvaliacaoRisco.NivelRisco.ALTO;
         }
+
         if (indiceRisco >= LIMITE_ATENCAO) {
             return AvaliacaoRisco.NivelRisco.ATENCAO;
         }
+
         return AvaliacaoRisco.NivelRisco.BAIXO;
     }
 

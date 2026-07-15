@@ -12,14 +12,23 @@ public class FuncionarioDetailsService implements UserDetailsService {
 
     private final FuncionarioRepository funcionarioRepository;
 
-    public FuncionarioDetailsService(FuncionarioRepository funcionarioRepository) {
+    public FuncionarioDetailsService(
+            FuncionarioRepository funcionarioRepository
+    ) {
         this.funcionarioRepository = funcionarioRepository;
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return funcionarioRepository.findByEmailWithSetor(email)
+    public UserDetails loadUserByUsername(String email)
+            throws UsernameNotFoundException {
+
+        return funcionarioRepository
+                .findByEmail(email)
                 .map(FuncionarioUserDetails::new)
-                .orElseThrow(() -> new UsernameNotFoundException("Funcionário não encontrado: " + email));
+                .orElseThrow(() ->
+                        new UsernameNotFoundException(
+                                "Funcionário não encontrado: " + email
+                        )
+                );
     }
 }

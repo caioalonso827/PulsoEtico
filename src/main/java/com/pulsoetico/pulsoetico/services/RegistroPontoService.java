@@ -35,7 +35,9 @@ public class RegistroPontoService {
             RegistroPontoRepository registroPontoRepository,
             AutorizacaoEmpresaService autorizacao
     ) {
-        this.registroPontoRepository = registroPontoRepository;
+        this.registroPontoRepository =
+                registroPontoRepository;
+
         this.autorizacao = autorizacao;
     }
 
@@ -45,11 +47,12 @@ public class RegistroPontoService {
             Funcionario funcionario,
             RegistroPontoRequest request
     ) {
-        MembroEmpresa membro = autorizacao.exigirPermissao(
-                empresaId,
-                funcionario,
-                Permissoes.REGISTRAR_PONTO
-        );
+        MembroEmpresa membro =
+                autorizacao.exigirPermissao(
+                        empresaId,
+                        funcionario,
+                        Permissoes.REGISTRAR_PONTO
+                );
 
         if (membro.getSetor() == null) {
             throw new EntityNotFoundException(
@@ -79,13 +82,17 @@ public class RegistroPontoService {
             Long empresaId,
             Funcionario funcionario
     ) {
-        autorizacao.exigirMembro(empresaId, funcionario);
+        autorizacao.exigirMembro(
+                empresaId,
+                funcionario
+        );
 
         Instant inicioDoDia = LocalDate.now(ZONA)
                 .atStartOfDay(ZONA)
                 .toInstant();
 
-        Instant fimDoDia = inicioDoDia.plusSeconds(86400);
+        Instant fimDoDia =
+                inicioDoDia.plusSeconds(86400);
 
         return registroPontoRepository
                 .findByEmpresaIdAndFuncionarioIdAndHorarioBetweenOrderByHorarioAsc(
@@ -100,29 +107,35 @@ public class RegistroPontoService {
             Long empresaId,
             Long funcionarioId
     ) {
-        RegistroPonto ultimo = registroPontoRepository
-                .findTopByEmpresaIdAndFuncionarioIdOrderByHorarioDesc(
-                        empresaId,
-                        funcionarioId
-                );
+        RegistroPonto ultimo =
+                registroPontoRepository
+                        .findTopByEmpresaIdAndFuncionarioIdOrderByHorarioDesc(
+                                empresaId,
+                                funcionarioId
+                        );
 
         if (ultimo == null) {
             return RegistroPonto.TipoRegistro.ENTRADA;
         }
 
         int indiceAtual = indexOf(ultimo.getTipo());
+
         int proximoIndice =
-                (indiceAtual + 1) % SEQUENCIA.length;
+                (indiceAtual + 1)
+                        % SEQUENCIA.length;
 
         return SEQUENCIA[proximoIndice];
     }
 
-    private int indexOf(RegistroPonto.TipoRegistro tipo) {
+    private int indexOf(
+            RegistroPonto.TipoRegistro tipo
+    ) {
         for (int i = 0; i < SEQUENCIA.length; i++) {
             if (SEQUENCIA[i] == tipo) {
                 return i;
             }
         }
+
         return SEQUENCIA.length - 1;
     }
 }

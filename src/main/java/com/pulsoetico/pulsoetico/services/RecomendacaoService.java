@@ -27,7 +27,9 @@ public class RecomendacaoService {
             SetorRepository setorRepository,
             AutorizacaoEmpresaService autorizacao
     ) {
-        this.recomendacaoRepository = recomendacaoRepository;
+        this.recomendacaoRepository =
+                recomendacaoRepository;
+
         this.setorRepository = setorRepository;
         this.autorizacao = autorizacao;
     }
@@ -35,60 +37,89 @@ public class RecomendacaoService {
     public List<Recomendacao> gerarRecomendacoes(
             AvaliacaoRisco avaliacao
     ) {
-        List<Recomendacao> recomendacoes = new ArrayList<>();
+        List<Recomendacao> recomendacoes =
+                new ArrayList<>();
 
         if (avaliacao.getMediaHorasExtras() != null
                 && avaliacao.getMediaHorasExtras() >= 10) {
-            recomendacoes.add(criar(
-                    avaliacao,
-                    "Horas extras acima do saudável. Considere reduzir a carga e redistribuir tarefas.",
-                    Recomendacao.TipoRecomendacao.REDUZIR_HORAS_EXTRAS
-            ));
+
+            recomendacoes.add(
+                    criar(
+                            avaliacao,
+                            "Horas extras acima do saudável. Considere reduzir a carga e redistribuir tarefas.",
+                            Recomendacao.TipoRecomendacao
+                                    .REDUZIR_HORAS_EXTRAS
+                    )
+            );
         }
 
         if (avaliacao.getMediaSeveridadeHumor() != null
                 && avaliacao.getMediaSeveridadeHumor() >= 3.5) {
-            recomendacoes.add(criar(
-                    avaliacao,
-                    "Humor médio da equipe em queda. Recomendamos uma conversa aberta com o time.",
-                    Recomendacao.TipoRecomendacao.CONVERSA_COM_EQUIPE
-            ));
+
+            recomendacoes.add(
+                    criar(
+                            avaliacao,
+                            "Humor médio da equipe em queda. Recomendamos uma conversa aberta com o time.",
+                            Recomendacao.TipoRecomendacao
+                                    .CONVERSA_COM_EQUIPE
+                    )
+            );
         }
 
         if (avaliacao.getTaxaRotatividade() != null
                 && avaliacao.getTaxaRotatividade() >= 15) {
-            recomendacoes.add(criar(
-                    avaliacao,
-                    "Rotatividade elevada no setor. Avalie redistribuir tarefas e revisar a carga da equipe.",
-                    Recomendacao.TipoRecomendacao.REDISTRIBUIR_TAREFAS
-            ));
+
+            recomendacoes.add(
+                    criar(
+                            avaliacao,
+                            "Rotatividade elevada no setor. Avalie redistribuir tarefas e revisar a carga da equipe.",
+                            Recomendacao.TipoRecomendacao
+                                    .REDISTRIBUIR_TAREFAS
+                    )
+            );
         }
 
-        if (avaliacao.getQuantidadeDenunciasAnonimas() != null
-                && avaliacao.getQuantidadeDenunciasAnonimas() >= 2) {
-            recomendacoes.add(criar(
-                    avaliacao,
-                    "Aumento em denúncias anônimas. Recomendamos apoio psicológico e treinamento de liderança.",
-                    Recomendacao.TipoRecomendacao.APOIO_PSICOLOGICO
-            ));
-            recomendacoes.add(criar(
-                    avaliacao,
-                    "Reforce o treinamento de liderança do setor para prevenir conflitos recorrentes.",
-                    Recomendacao.TipoRecomendacao.TREINAMENTO_LIDERANCA
-            ));
+        if (avaliacao.getQuantidadeDenunciasAnonimas()
+                != null
+                && avaliacao
+                        .getQuantidadeDenunciasAnonimas()
+                        >= 2) {
+
+            recomendacoes.add(
+                    criar(
+                            avaliacao,
+                            "Aumento em denúncias anônimas. Recomendamos apoio psicológico e treinamento de liderança.",
+                            Recomendacao.TipoRecomendacao
+                                    .APOIO_PSICOLOGICO
+                    )
+            );
+
+            recomendacoes.add(
+                    criar(
+                            avaliacao,
+                            "Reforce o treinamento de liderança do setor para prevenir conflitos recorrentes.",
+                            Recomendacao.TipoRecomendacao
+                                    .TREINAMENTO_LIDERANCA
+                    )
+            );
         }
 
         if (recomendacoes.isEmpty()
                 && avaliacao.getNivelRisco()
-                != AvaliacaoRisco.NivelRisco.BAIXO) {
-            recomendacoes.add(criar(
-                    avaliacao,
-                    "Índice de risco em alta. Recomendamos acompanhar o setor de perto nas próximas semanas.",
-                    Recomendacao.TipoRecomendacao.CONVERSA_COM_EQUIPE
-            ));
+                        != AvaliacaoRisco.NivelRisco.BAIXO) {
+
+            recomendacoes.add(
+                    criar(
+                            avaliacao,
+                            "Índice de risco em alta. Recomendamos acompanhar o setor de perto nas próximas semanas.",
+                            Recomendacao.TipoRecomendacao
+                                    .CONVERSA_COM_EQUIPE
+                    )
+            );
         }
 
-        return recomendacaoRepository.saveAll(recomendacoes);
+        return recomendacaoRepository
+                .saveAll(recomendacoes);
     }
 
     @Transactional(readOnly = true)
@@ -104,8 +135,12 @@ public class RecomendacaoService {
         );
 
         if (setorRepository
-                .findByIdAndEmpresaId(setorId, empresaId)
+                .findByIdAndEmpresaId(
+                        setorId,
+                        empresaId
+                )
                 .isEmpty()) {
+
             throw new EntityNotFoundException(
                     "Setor não encontrado nesta empresa"
             );
@@ -130,18 +165,20 @@ public class RecomendacaoService {
                 Permissoes.VISUALIZAR_DASHBOARD
         );
 
-        Recomendacao recomendacao = recomendacaoRepository
-                .findByIdAndAvaliacaoRisco_Setor_Empresa_Id(
-                        recomendacaoId,
-                        empresaId
-                )
-                .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "Recomendação não encontrada nesta empresa"
+        Recomendacao recomendacao =
+                recomendacaoRepository
+                        .findByIdAndAvaliacaoRisco_Setor_Empresa_Id(
+                                recomendacaoId,
+                                empresaId
                         )
-                );
+                        .orElseThrow(() ->
+                                new EntityNotFoundException(
+                                        "Recomendação não encontrada nesta empresa"
+                                )
+                        );
 
         recomendacao.setReconhecida(true);
+
         return recomendacaoRepository.save(recomendacao);
     }
 

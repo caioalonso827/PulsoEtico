@@ -56,15 +56,24 @@ public class RegistroPonto {
     @Column(nullable = false)
     private Instant horario;
 
-    @Column(name = "foto_base64", columnDefinition = "TEXT", nullable = false)
+    @Column(
+        name = "foto_base64",
+        columnDefinition = "TEXT",
+        nullable = false
+    )
     private String fotoBase64;
 
-    @Column(name = "criado_em", nullable = false, updatable = false)
+    @Column(
+        name = "criado_em",
+        nullable = false,
+        updatable = false
+    )
     private Instant criadoEm;
 
     @PrePersist
     protected void aoCriar() {
         this.criadoEm = Instant.now();
+
         if (this.horario == null) {
             this.horario = this.criadoEm;
         }

@@ -8,8 +8,6 @@ import com.pulsoetico.pulsoetico.models.MembroEmpresa;
 import com.pulsoetico.pulsoetico.models.Permissoes;
 import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
 
-import jakarta.persistence.EntityNotFoundException;
-
 @Service
 public class AutorizacaoEmpresaService {
 
@@ -25,14 +23,26 @@ public class AutorizacaoEmpresaService {
             Long empresaId,
             Funcionario usuario
     ) {
+        if (empresaId == null) {
+            throw new AccessDeniedException(
+                    "A empresa deve ser informada"
+            );
+        }
+
+        if (usuario == null || usuario.getId() == null) {
+            throw new AccessDeniedException(
+                    "Usuário não autenticado"
+            );
+        }
+
         return membroRepository
                 .findByEmpresaIdAndFuncionarioIdAndAtivoTrue(
                         empresaId,
                         usuario.getId()
                 )
                 .orElseThrow(() ->
-                        new EntityNotFoundException(
-                                "Empresa não encontrada"
+                        new AccessDeniedException(
+                                "Você não é membro ativo desta empresa"
                         )
                 );
     }
@@ -42,13 +52,16 @@ public class AutorizacaoEmpresaService {
             Funcionario usuario,
             Permissoes permissao
     ) {
-        MembroEmpresa membro = exigirMembro(empresaId, usuario);
+        MembroEmpresa membro = exigirMembro(
+                empresaId,
+                usuario
+        );
 
         if (!membro.possuiPermissao(permissao)) {
             throw new AccessDeniedException(
-                    "Você não possui a permissão " +
-                    permissao +
-                    " nesta empresa"
+                    "Você não possui a permissão "
+                            + permissao
+                            + " nesta empresa"
             );
         }
 

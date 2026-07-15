@@ -33,7 +33,8 @@ public class JornadaAnalyticsService {
     private static final ZoneId ZONA =
             ZoneId.of("America/Sao_Paulo");
 
-    private static final double LIMITE_LEGAL_HORAS_DIA = 10.0;
+    private static final double LIMITE_LEGAL_HORAS_DIA =
+            10.0;
 
     private final RegistroPontoRepository registroPontoRepository;
     private final MembroEmpresaRepository membroRepository;
@@ -50,10 +51,17 @@ public class JornadaAnalyticsService {
             DenunciaService denunciaService,
             AutorizacaoEmpresaService autorizacao
     ) {
-        this.registroPontoRepository = registroPontoRepository;
+        this.registroPontoRepository =
+                registroPontoRepository;
+
         this.membroRepository = membroRepository;
-        this.avaliacaoRiscoRepository = avaliacaoRiscoRepository;
-        this.horasExtrasCalculatorService = horasExtrasCalculatorService;
+
+        this.avaliacaoRiscoRepository =
+                avaliacaoRiscoRepository;
+
+        this.horasExtrasCalculatorService =
+                horasExtrasCalculatorService;
+
         this.denunciaService = denunciaService;
         this.autorizacao = autorizacao;
     }
@@ -72,28 +80,32 @@ public class JornadaAnalyticsService {
 
         Instant agora = Instant.now();
 
-        List<RegistroPonto> registrosDoMes = registroPontoRepository
-                .findByEmpresaIdAndHorarioBetweenOrderByHorarioAsc(
-                        empresaId,
-                        inicioDoMes,
-                        agora
-                );
+        List<RegistroPonto> registrosDoMes =
+                registroPontoRepository
+                        .findByEmpresaIdAndHorarioBetweenOrderByHorarioAsc(
+                                empresaId,
+                                inicioDoMes,
+                                agora
+                        );
 
-        Map<Long, List<RegistroPonto>> registrosPorFuncionario =
+        Map<Long, List<RegistroPonto>>
+        registrosPorFuncionario =
                 agruparPorFuncionario(registrosDoMes);
 
-        List<MembroEmpresa> membrosAtivos = membroRepository
-                .findAllByEmpresaIdAndAtivoTrueOrderByFuncionarioNomeCompletoAsc(
-                        empresaId
-                );
+        List<MembroEmpresa> membrosAtivos =
+                membroRepository
+                        .findAllByEmpresaIdAndAtivoTrueOrderByFuncionarioNomeCompletoAsc(
+                                empresaId
+                        );
 
-        double horasExtrasMes = registrosPorFuncionario.values()
-                .stream()
-                .mapToDouble(
-                        horasExtrasCalculatorService
-                                ::calcularHorasExtrasFuncionario
-                )
-                .sum();
+        double horasExtrasMes =
+                registrosPorFuncionario.values()
+                        .stream()
+                        .mapToDouble(
+                                horasExtrasCalculatorService
+                                        ::calcularHorasExtrasFuncionario
+                        )
+                        .sum();
 
         long faltasMes = calcularFaltas(
                 inicioDoMes,
@@ -103,7 +115,9 @@ public class JornadaAnalyticsService {
         );
 
         String jornadaMediaFormatada =
-                calcularJornadaMediaFormatada(registrosDoMes);
+                calcularJornadaMediaFormatada(
+                        registrosDoMes
+                );
 
         double compliance = calcularComplianceNR1(
                 empresaId,
@@ -111,7 +125,9 @@ public class JornadaAnalyticsService {
         );
 
         List<JornadaResumoResponse.HorasPorDia> grafico =
-                calcularMediaPorDiaDaSemana(registrosDoMes);
+                calcularMediaPorDiaDaSemana(
+                        registrosDoMes
+                );
 
         return new JornadaResumoResponse(
                 arredondar(horasExtrasMes),
@@ -130,113 +146,154 @@ public class JornadaAnalyticsService {
     ) {
         exigirAcesso(empresaId, usuario);
 
-        Instant inicio = dia.atStartOfDay(ZONA).toInstant();
-        Instant fim = inicio.plus(1, ChronoUnit.DAYS);
+        Instant inicio = dia
+                .atStartOfDay(ZONA)
+                .toInstant();
 
-        List<RegistroPonto> registros = registroPontoRepository
-                .findByEmpresaIdAndHorarioBetweenOrderByHorarioAsc(
-                        empresaId,
-                        inicio,
-                        fim
-                );
+        Instant fim = inicio.plus(
+                1,
+                ChronoUnit.DAYS
+        );
+
+        List<RegistroPonto> registros =
+                registroPontoRepository
+                        .findByEmpresaIdAndHorarioBetweenOrderByHorarioAsc(
+                                empresaId,
+                                inicio,
+                                fim
+                        );
 
         Map<Long, List<RegistroPonto>> porFuncionario =
                 agruparPorFuncionario(registros);
 
-        List<MembroEmpresa> membrosAtivos = membroRepository
-                .findAllByEmpresaIdAndAtivoTrueOrderByFuncionarioNomeCompletoAsc(
-                        empresaId
-                );
+        List<MembroEmpresa> membrosAtivos =
+                membroRepository
+                        .findAllByEmpresaIdAndAtivoTrueOrderByFuncionarioNomeCompletoAsc(
+                                empresaId
+                        );
 
-        Map<Long, MembroEmpresa> membroPorFuncionario = membrosAtivos
-                .stream()
-                .collect(Collectors.toMap(
-                        membro -> membro.getFuncionario().getId(),
-                        Function.identity()
-                ));
+        Map<Long, MembroEmpresa> membroPorFuncionario =
+                membrosAtivos.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        membro ->
+                                                membro
+                                                        .getFuncionario()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
 
-        List<RegistroDiaResponse> resultado = new ArrayList<>();
+        List<RegistroDiaResponse> resultado =
+                new ArrayList<>();
 
-        for (List<RegistroPonto> registrosDoFuncionario
-                : porFuncionario.values()) {
+        for (List<RegistroPonto> registrosDoFuncionario :
+                porFuncionario.values()) {
 
-            Funcionario funcionario = registrosDoFuncionario
-                    .get(0)
-                    .getFuncionario();
+            Funcionario funcionario =
+                    registrosDoFuncionario
+                            .get(0)
+                            .getFuncionario();
 
-            List<RegistroPonto> ordenados = registrosDoFuncionario
-                    .stream()
-                    .sorted(Comparator.comparing(
-                            RegistroPonto::getHorario
-                    ))
-                    .toList();
+            List<RegistroPonto> ordenados =
+                    registrosDoFuncionario.stream()
+                            .sorted(
+                                    Comparator.comparing(
+                                            RegistroPonto
+                                                    ::getHorario
+                                    )
+                            )
+                            .toList();
 
             Instant entrada = ordenados.stream()
-                    .filter(r -> r.getTipo()
-                            == RegistroPonto.TipoRegistro.ENTRADA)
+                    .filter(
+                            registro ->
+                                    registro.getTipo()
+                                            == RegistroPonto
+                                                    .TipoRegistro
+                                                    .ENTRADA
+                    )
                     .map(RegistroPonto::getHorario)
                     .findFirst()
                     .orElse(null);
 
             Instant saida = ordenados.stream()
-                    .filter(r -> r.getTipo()
-                            == RegistroPonto.TipoRegistro.SAIDA)
+                    .filter(
+                            registro ->
+                                    registro.getTipo()
+                                            == RegistroPonto
+                                                    .TipoRegistro
+                                                    .SAIDA
+                    )
                     .map(RegistroPonto::getHorario)
-                    .reduce((primeiro, ultimo) -> ultimo)
+                    .reduce(
+                            (primeiro, ultimo) -> ultimo
+                    )
                     .orElse(null);
 
-            double horasExtras = horasExtrasCalculatorService
-                    .calcularHorasExtrasFuncionario(
-                            registrosDoFuncionario
-                    );
+            double horasExtras =
+                    horasExtrasCalculatorService
+                            .calcularHorasExtrasFuncionario(
+                                    registrosDoFuncionario
+                            );
 
-            String status = entrada != null && saida != null
-                    ? "COMPLETO"
-                    : "INCOMPLETO";
+            String status =
+                    entrada != null && saida != null
+                            ? "COMPLETO"
+                            : "INCOMPLETO";
 
-            String setorNome = registrosDoFuncionario.get(0)
-                    .getSetor() != null
-                    ? registrosDoFuncionario.get(0)
-                            .getSetor()
-                            .getNome()
-                    : obterSetorAtual(
-                            membroPorFuncionario.get(
-                                    funcionario.getId()
-                            )
-                    );
+            String setorNome =
+                    registrosDoFuncionario.get(0)
+                            .getSetor() != null
+                            ? registrosDoFuncionario
+                                    .get(0)
+                                    .getSetor()
+                                    .getNome()
+                            : obterSetorAtual(
+                                    membroPorFuncionario.get(
+                                            funcionario.getId()
+                                    )
+                            );
 
-            resultado.add(new RegistroDiaResponse(
-                    funcionario.getNomeCompleto(),
-                    setorNome,
-                    entrada,
-                    saida,
-                    arredondar(horasExtras),
-                    status
-            ));
+            resultado.add(
+                    new RegistroDiaResponse(
+                            funcionario.getNomeCompleto(),
+                            setorNome,
+                            entrada,
+                            saida,
+                            arredondar(horasExtras),
+                            status
+                    )
+            );
         }
 
         if (ehDiaUtil(dia)) {
             for (MembroEmpresa membro : membrosAtivos) {
-                Long funcionarioId = membro
-                        .getFuncionario()
-                        .getId();
+                Long funcionarioId =
+                        membro.getFuncionario().getId();
 
-                boolean bateuPonto = porFuncionario
-                        .containsKey(funcionarioId);
+                boolean bateuPonto =
+                        porFuncionario.containsKey(
+                                funcionarioId
+                        );
 
-                boolean jaEraMembro = membro.getEntrouEm()
-                        .isBefore(fim);
+                boolean jaEraMembro =
+                        membro.getEntrouEm()
+                                .isBefore(fim);
 
                 if (!bateuPonto && jaEraMembro) {
-                    resultado.add(new RegistroDiaResponse(
-                            membro.getFuncionario()
-                                    .getNomeCompleto(),
-                            obterSetorAtual(membro),
-                            null,
-                            null,
-                            null,
-                            "FALTA"
-                    ));
+                    resultado.add(
+                            new RegistroDiaResponse(
+                                    membro
+                                            .getFuncionario()
+                                            .getNomeCompleto(),
+                                    obterSetorAtual(membro),
+                                    null,
+                                    null,
+                                    null,
+                                    "FALTA"
+                            )
+                    );
                 }
             }
         }
@@ -247,38 +304,49 @@ public class JornadaAnalyticsService {
     private long calcularFaltas(
             Instant inicio,
             Instant fim,
-            Map<Long, List<RegistroPonto>> registrosPorFuncionario,
+            Map<Long, List<RegistroPonto>>
+                    registrosPorFuncionario,
             List<MembroEmpresa> membrosAtivos
     ) {
         long totalFaltas = 0;
 
-        LocalDate diaInicio = LocalDate.ofInstant(inicio, ZONA);
-        LocalDate diaFim = LocalDate.ofInstant(fim, ZONA);
+        LocalDate diaInicio =
+                LocalDate.ofInstant(inicio, ZONA);
+
+        LocalDate diaFim =
+                LocalDate.ofInstant(fim, ZONA);
 
         for (MembroEmpresa membro : membrosAtivos) {
-            Long funcionarioId = membro.getFuncionario().getId();
+            Long funcionarioId =
+                    membro.getFuncionario().getId();
 
             Map<LocalDate, Double> horasPorDia =
-                    registrosPorFuncionario.containsKey(funcionarioId)
+                    registrosPorFuncionario
+                            .containsKey(funcionarioId)
                             ? horasExtrasCalculatorService
                                     .calcularHorasTrabalhadasPorDia(
-                                            registrosPorFuncionario.get(
-                                                    funcionarioId
-                                            )
+                                            registrosPorFuncionario
+                                                    .get(
+                                                            funcionarioId
+                                                    )
                                     )
                             : Map.of();
 
-            LocalDate dataEntradaNaEmpresa = LocalDate.ofInstant(
-                    membro.getEntrouEm(),
-                    ZONA
-            );
+            LocalDate dataEntradaNaEmpresa =
+                    LocalDate.ofInstant(
+                            membro.getEntrouEm(),
+                            ZONA
+                    );
 
-            for (LocalDate dia = diaInicio;
+            for (
+                    LocalDate dia = diaInicio;
                     !dia.isAfter(diaFim);
-                    dia = dia.plusDays(1)) {
-
+                    dia = dia.plusDays(1)
+            ) {
                 boolean jaEraMembro =
-                        !dia.isBefore(dataEntradaNaEmpresa);
+                        !dia.isBefore(
+                                dataEntradaNaEmpresa
+                        );
 
                 boolean naoTrabalhouNesseDia =
                         !horasPorDia.containsKey(dia);
@@ -300,10 +368,12 @@ public class JornadaAnalyticsService {
         Map<Long, List<RegistroPonto>> porFuncionario =
                 agruparPorFuncionario(registros);
 
-        List<Double> duracoesDosTurnos = new ArrayList<>();
+        List<Double> duracoesDosTurnos =
+                new ArrayList<>();
 
-        for (List<RegistroPonto> registrosDoFuncionario
-                : porFuncionario.values()) {
+        for (List<RegistroPonto> registrosDoFuncionario :
+                porFuncionario.values()) {
+
             duracoesDosTurnos.addAll(
                     horasExtrasCalculatorService
                             .calcularHorasTrabalhadasPorDia(
@@ -317,12 +387,14 @@ public class JornadaAnalyticsService {
             return "0h00";
         }
 
-        double mediaHoras = duracoesDosTurnos.stream()
-                .mapToDouble(valor -> valor)
-                .average()
-                .orElse(0.0);
+        double mediaHoras =
+                duracoesDosTurnos.stream()
+                        .mapToDouble(valor -> valor)
+                        .average()
+                        .orElse(0.0);
 
         int horasInteiras = (int) mediaHoras;
+
         int minutos = (int) Math.round(
                 (mediaHoras - horasInteiras) * 60
         );
@@ -334,7 +406,8 @@ public class JornadaAnalyticsService {
 
     private double calcularComplianceNR1(
             Long empresaId,
-            Map<Long, List<RegistroPonto>> registrosPorFuncionario
+            Map<Long, List<RegistroPonto>>
+                    registrosPorFuncionario
     ) {
         List<AvaliacaoRisco> ultimasAvaliacoes =
                 avaliacaoRiscoRepository
@@ -342,53 +415,77 @@ public class JornadaAnalyticsService {
                                 empresaId
                         );
 
-        double percentualSetoresOk = ultimasAvaliacoes.isEmpty()
-                ? 100.0
-                : 100.0 * ultimasAvaliacoes.stream()
-                        .filter(a -> a.getNivelRisco()
-                                != AvaliacaoRisco.NivelRisco.ALTO)
-                        .count()
-                        / ultimasAvaliacoes.size();
+        double percentualSetoresOk =
+                ultimasAvaliacoes.isEmpty()
+                        ? 100.0
+                        : 100.0
+                                * ultimasAvaliacoes.stream()
+                                        .filter(
+                                                avaliacao ->
+                                                        avaliacao
+                                                                .getNivelRisco()
+                                                                != AvaliacaoRisco
+                                                                        .NivelRisco
+                                                                        .ALTO
+                                        )
+                                        .count()
+                                / ultimasAvaliacoes.size();
 
         long denunciasAbertas =
-                denunciaService.contarAbertasDaEmpresa(empresaId);
+                denunciaService.contarAbertasDaEmpresa(
+                        empresaId
+                );
 
-        long denunciasVencidas = denunciaService
-                .contarSemRespostaAlemDoLimiteDaEmpresa(empresaId);
+        long denunciasVencidas =
+                denunciaService
+                        .contarSemRespostaAlemDoLimiteDaEmpresa(
+                                empresaId
+                        );
 
-        double percentualDenunciasOk = denunciasAbertas == 0
-                ? 100.0
-                : 100.0
-                        * (denunciasAbertas - denunciasVencidas)
-                        / denunciasAbertas;
+        double percentualDenunciasOk =
+                denunciasAbertas == 0
+                        ? 100.0
+                        : 100.0
+                                * (
+                                    denunciasAbertas
+                                            - denunciasVencidas
+                                )
+                                / denunciasAbertas;
 
         long totalDias = 0;
         long diasDentroDoLimite = 0;
 
-        for (List<RegistroPonto> registrosDoFuncionario
-                : registrosPorFuncionario.values()) {
+        for (List<RegistroPonto> registrosDoFuncionario :
+                registrosPorFuncionario.values()) {
 
-            for (double horasNoDia : horasExtrasCalculatorService
-                    .calcularHorasTrabalhadasPorDia(
-                            registrosDoFuncionario
-                    )
-                    .values()) {
+            for (double horasNoDia :
+                    horasExtrasCalculatorService
+                            .calcularHorasTrabalhadasPorDia(
+                                    registrosDoFuncionario
+                            )
+                            .values()) {
 
                 totalDias++;
 
-                if (horasNoDia <= LIMITE_LEGAL_HORAS_DIA) {
+                if (horasNoDia
+                        <= LIMITE_LEGAL_HORAS_DIA) {
                     diasDentroDoLimite++;
                 }
             }
         }
 
-        double percentualJornadaOk = totalDias == 0
-                ? 100.0
-                : 100.0 * diasDentroDoLimite / totalDias;
+        double percentualJornadaOk =
+                totalDias == 0
+                        ? 100.0
+                        : 100.0
+                                * diasDentroDoLimite
+                                / totalDias;
 
-        return (percentualSetoresOk
-                + percentualDenunciasOk
-                + percentualJornadaOk) / 3.0;
+        return (
+                percentualSetoresOk
+                        + percentualDenunciasOk
+                        + percentualJornadaOk
+        ) / 3.0;
     }
 
     private List<JornadaResumoResponse.HorasPorDia>
@@ -398,15 +495,19 @@ public class JornadaAnalyticsService {
         Map<Long, List<RegistroPonto>> porFuncionario =
                 agruparPorFuncionario(registros);
 
-        Map<DayOfWeek, List<Double>> horasPorDiaDaSemana =
+        Map<DayOfWeek, List<Double>>
+        horasPorDiaDaSemana =
                 new EnumMap<>(DayOfWeek.class);
 
         for (DayOfWeek dia : DayOfWeek.values()) {
-            horasPorDiaDaSemana.put(dia, new ArrayList<>());
+            horasPorDiaDaSemana.put(
+                    dia,
+                    new ArrayList<>()
+            );
         }
 
-        for (List<RegistroPonto> registrosDoFuncionario
-                : porFuncionario.values()) {
+        for (List<RegistroPonto> registrosDoFuncionario :
+                porFuncionario.values()) {
 
             Map<LocalDate, Double> horasPorDia =
                     horasExtrasCalculatorService
@@ -414,15 +515,16 @@ public class JornadaAnalyticsService {
                                     registrosDoFuncionario
                             );
 
-            horasPorDia.forEach((dia, horas) ->
-                    horasPorDiaDaSemana
-                            .get(dia.getDayOfWeek())
-                            .add(horas)
+            horasPorDia.forEach(
+                    (dia, horas) ->
+                            horasPorDiaDaSemana
+                                    .get(dia.getDayOfWeek())
+                                    .add(horas)
             );
         }
 
-        List<JornadaResumoResponse.HorasPorDia> resultado =
-                new ArrayList<>();
+        List<JornadaResumoResponse.HorasPorDia>
+        resultado = new ArrayList<>();
 
         DayOfWeek[] ordemExibicao = {
                 DayOfWeek.MONDAY,
@@ -435,7 +537,8 @@ public class JornadaAnalyticsService {
         };
 
         for (DayOfWeek dia : ordemExibicao) {
-            List<Double> valores = horasPorDiaDaSemana.get(dia);
+            List<Double> valores =
+                    horasPorDiaDaSemana.get(dia);
 
             double media = valores.isEmpty()
                     ? 0.0
@@ -455,27 +558,35 @@ public class JornadaAnalyticsService {
         return resultado;
     }
 
-    private Map<Long, List<RegistroPonto>> agruparPorFuncionario(
+    private Map<Long, List<RegistroPonto>>
+    agruparPorFuncionario(
             List<RegistroPonto> registros
     ) {
-        return registros.stream().collect(
-                Collectors.groupingBy(
-                        registro -> registro
-                                .getFuncionario()
-                                .getId()
-                )
-        );
+        return registros.stream()
+                .collect(
+                        Collectors.groupingBy(
+                                registro ->
+                                        registro
+                                                .getFuncionario()
+                                                .getId()
+                        )
+                );
     }
 
-    private String obterSetorAtual(MembroEmpresa membro) {
-        return membro != null && membro.getSetor() != null
+    private String obterSetorAtual(
+            MembroEmpresa membro
+    ) {
+        return membro != null
+                && membro.getSetor() != null
                 ? membro.getSetor().getNome()
                 : null;
     }
 
     private boolean ehDiaUtil(LocalDate dia) {
-        return dia.getDayOfWeek() != DayOfWeek.SATURDAY
-                && dia.getDayOfWeek() != DayOfWeek.SUNDAY;
+        return dia.getDayOfWeek()
+                != DayOfWeek.SATURDAY
+                && dia.getDayOfWeek()
+                != DayOfWeek.SUNDAY;
     }
 
     private void exigirAcesso(

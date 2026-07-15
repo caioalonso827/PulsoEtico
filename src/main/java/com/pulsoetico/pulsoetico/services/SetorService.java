@@ -31,7 +31,10 @@ public class SetorService {
             Long setorId
     ) {
         return setorRepository
-                .findByIdAndEmpresaId(setorId, empresaId)
+                .findByIdAndEmpresaId(
+                        setorId,
+                        empresaId
+                )
                 .orElseThrow(() ->
                         new EntityNotFoundException(
                                 "Setor não encontrado nesta empresa"
@@ -60,6 +63,7 @@ public class SetorService {
         setor.setTaxaRotatividadeMensal(
                 request.taxaRotatividadeMensal()
         );
+
         setor.setQuantidadeDenunciasAnonimasMensal(
                 request.quantidadeDenunciasAnonimasMensal()
         );

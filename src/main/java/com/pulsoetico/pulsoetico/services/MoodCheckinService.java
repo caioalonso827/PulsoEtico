@@ -22,7 +22,9 @@ public class MoodCheckinService {
             CheckinHumorRepository checkinHumorRepository,
             AutorizacaoEmpresaService autorizacao
     ) {
-        this.checkinHumorRepository = checkinHumorRepository;
+        this.checkinHumorRepository =
+                checkinHumorRepository;
+
         this.autorizacao = autorizacao;
     }
 
@@ -32,11 +34,12 @@ public class MoodCheckinService {
             Long empresaId,
             CheckinHumorRequest request
     ) {
-        MembroEmpresa membro = autorizacao.exigirPermissao(
-                empresaId,
-                funcionarioLogado,
-                Permissoes.RESPONDER_PESQUISAS
-        );
+        MembroEmpresa membro =
+                autorizacao.exigirPermissao(
+                        empresaId,
+                        funcionarioLogado,
+                        Permissoes.RESPONDER_PESQUISAS
+                );
 
         if (membro.getSetor() == null) {
             throw new EntityNotFoundException(

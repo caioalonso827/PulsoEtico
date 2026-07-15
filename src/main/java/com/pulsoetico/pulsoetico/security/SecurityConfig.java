@@ -24,19 +24,24 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter
+    ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
 
                 .cors(cors ->
-                        cors.configurationSource(corsConfigurationSource())
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
                 )
 
                 .sessionManagement(session ->
@@ -46,8 +51,6 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
-
-                        // Rotas públicas
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/v3/api-docs/**",
@@ -55,23 +58,12 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // Usuário recém-cadastrado pode criar empresa
-                        // ou entrar por código.
-                        .requestMatchers("/api/empresas/**")
-                        .authenticated()
-
-                        // Denúncias
-                        .requestMatchers("/api/publico/denuncias/**")
-                        .hasAnyRole("TRABALHADOR", "GESTOR")
-
-                        // Painel administrativo
-                        .requestMatchers("/api/painel/**")
-                        .hasRole("GESTOR")
-
-                        // Aplicativo do trabalhador
-                        .requestMatchers("/api/app/**")
-                        .hasAnyRole("TRABALHADOR", "GESTOR")
-
+                        /*
+                         * O Spring Security verifica apenas se o usuário
+                         * está autenticado.
+                         *
+                         * A permissão específica é validada pelos services.
+                         */
                         .anyRequest().authenticated()
                 )
 
@@ -90,16 +82,16 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
-
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider(
             FuncionarioDetailsService funcionarioDetailsService,
-            PasswordEncoder passwordEncoder) {
-
+            PasswordEncoder passwordEncoder
+    ) {
         DaoAuthenticationProvider provider =
                 new DaoAuthenticationProvider(
                         funcionarioDetailsService

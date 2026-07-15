@@ -56,7 +56,9 @@ public class DenunciaService {
         Denuncia denuncia = Denuncia.builder()
                 .setor(setor)
                 .tipo(request.tipo().trim())
-                .descricao(normalizarDescricao(request.descricao()))
+                .descricao(
+                        normalizarDescricao(request.descricao())
+                )
                 .build();
 
         return denunciaRepository.save(denuncia);
@@ -112,6 +114,7 @@ public class DenunciaService {
         denuncia.setStatus(
                 Denuncia.StatusDenuncia.RESPONDIDA
         );
+
         denuncia.setRespondidaEm(Instant.now());
 
         return denunciaRepository.save(denuncia);
@@ -162,6 +165,7 @@ public class DenunciaService {
         if (descricao == null || descricao.isBlank()) {
             return null;
         }
+
         return descricao.trim();
     }
 }

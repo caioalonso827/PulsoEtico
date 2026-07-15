@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.pulsoetico.pulsoetico.models.RegistroPonto;
 import com.pulsoetico.pulsoetico.models.Setor;
 
-public interface RegistroPontoRepository extends JpaRepository<RegistroPonto, Long> {
+public interface RegistroPontoRepository
+        extends JpaRepository<RegistroPonto, Long> {
 
     List<RegistroPonto>
     findByEmpresaIdAndFuncionarioIdAndHorarioBetweenOrderByHorarioAsc(

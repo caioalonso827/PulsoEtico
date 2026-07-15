@@ -65,7 +65,12 @@ public class DashboardService {
         Double scoreMedioBemEstar = ultimasAvaliacoes.isEmpty()
                 ? null
                 : ultimasAvaliacoes.stream()
-                        .mapToDouble(a -> 100.0 - a.getIndiceRisco())
+                        .mapToDouble(
+                                avaliacao ->
+                                        100.0
+                                                - avaliacao
+                                                        .getIndiceRisco()
+                        )
                         .average()
                         .orElse(0.0);
 
@@ -97,40 +102,54 @@ public class DashboardService {
                             .findBySetorOrderByCalculadoEmDesc(setor);
 
             if (historico.isEmpty()) {
-                resultado.add(new SetorStatusResponse(
-                        setor.getId(),
-                        setor.getNome(),
-                        setor.getQuantidadeColaboradores(),
-                        null,
-                        "SEM_DADOS",
-                        List.of()
-                ));
+                resultado.add(
+                        new SetorStatusResponse(
+                                setor.getId(),
+                                setor.getNome(),
+                                setor.getQuantidadeColaboradores(),
+                                null,
+                                "SEM_DADOS",
+                                List.of()
+                        )
+                );
+
                 continue;
             }
 
             AvaliacaoRisco maisRecente = historico.get(0);
+
             double scoreBemEstar = arredondar(
                     100.0 - maisRecente.getIndiceRisco()
             );
 
             List<Double> tendencia = historico.stream()
                     .limit(PONTOS_TENDENCIA)
-                    .sorted(Comparator.comparing(
-                            AvaliacaoRisco::getCalculadoEm
-                    ))
-                    .map(a -> arredondar(
-                            100.0 - a.getIndiceRisco()
-                    ))
+                    .sorted(
+                            Comparator.comparing(
+                                    AvaliacaoRisco::getCalculadoEm
+                            )
+                    )
+                    .map(
+                            avaliacao -> arredondar(
+                                    100.0
+                                            - avaliacao
+                                                    .getIndiceRisco()
+                            )
+                    )
                     .toList();
 
-            resultado.add(new SetorStatusResponse(
-                    setor.getId(),
-                    setor.getNome(),
-                    setor.getQuantidadeColaboradores(),
-                    scoreBemEstar,
-                    mapearStatusLabel(maisRecente.getNivelRisco()),
-                    tendencia
-            ));
+            resultado.add(
+                    new SetorStatusResponse(
+                            setor.getId(),
+                            setor.getNome(),
+                            setor.getQuantidadeColaboradores(),
+                            scoreBemEstar,
+                            mapearStatusLabel(
+                                    maisRecente.getNivelRisco()
+                            ),
+                            tendencia
+                    )
+            );
         }
 
         return resultado;
@@ -156,35 +175,43 @@ public class DashboardService {
                             + denuncia.getDescricao()
                     : denuncia.getTipo();
 
-            alertas.add(new AlertaResponse(
-                    denuncia.getId(),
-                    AlertaResponse.Origem.DENUNCIA,
-                    denuncia.getSetor().getNome(),
-                    mensagem,
-                    denuncia.getCriadoEm()
-            ));
+            alertas.add(
+                    new AlertaResponse(
+                            denuncia.getId(),
+                            AlertaResponse.Origem.DENUNCIA,
+                            denuncia.getSetor().getNome(),
+                            mensagem,
+                            denuncia.getCriadoEm()
+                    )
+            );
         }
 
-        for (Recomendacao recomendacao : recomendacaoRepository
-                .findTop20ByAvaliacaoRisco_Setor_Empresa_IdOrderByCriadoEmDesc(
-                        empresaId
-                )) {
+        for (Recomendacao recomendacao :
+                recomendacaoRepository
+                        .findTop20ByAvaliacaoRisco_Setor_Empresa_IdOrderByCriadoEmDesc(
+                                empresaId
+                        )) {
 
-            alertas.add(new AlertaResponse(
-                    recomendacao.getId(),
-                    AlertaResponse.Origem.RECOMENDACAO,
-                    recomendacao.getAvaliacaoRisco()
-                            .getSetor()
-                            .getNome(),
-                    recomendacao.getMensagem(),
-                    recomendacao.getCriadoEm()
-            ));
+            alertas.add(
+                    new AlertaResponse(
+                            recomendacao.getId(),
+                            AlertaResponse.Origem.RECOMENDACAO,
+                            recomendacao
+                                    .getAvaliacaoRisco()
+                                    .getSetor()
+                                    .getNome(),
+                            recomendacao.getMensagem(),
+                            recomendacao.getCriadoEm()
+                    )
+            );
         }
 
         return alertas.stream()
-                .sorted(Comparator.comparing(
-                        AlertaResponse::criadoEm
-                ).reversed())
+                .sorted(
+                        Comparator.comparing(
+                                AlertaResponse::criadoEm
+                        ).reversed()
+                )
                 .limit(limite)
                 .toList();
     }
