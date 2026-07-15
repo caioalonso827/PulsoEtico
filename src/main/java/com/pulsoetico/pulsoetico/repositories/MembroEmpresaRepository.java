@@ -40,6 +40,10 @@ public interface MembroEmpresaRepository
             Long empresaId
     );
 
+    List<MembroEmpresa> findAllByEmpresaIdAndSetorIsNull(
+            Long empresaId
+    );
+
     long countByEmpresaIdAndAtivoTrue(
             Long empresaId
     );

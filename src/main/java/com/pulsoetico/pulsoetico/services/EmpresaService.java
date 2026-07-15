@@ -54,6 +54,7 @@ public class EmpresaService {
     private final CargoRepository cargoRepository;
     private final MembroEmpresaRepository membroRepository;
     private final SetorRepository setorRepository;
+    private final SetorPadraoService setorPadraoService;
     private final AutorizacaoEmpresaService autorizacao;
     private final JwtService jwtService;
 
@@ -62,13 +63,16 @@ public class EmpresaService {
             CargoRepository cargoRepository,
             MembroEmpresaRepository membroRepository,
             SetorRepository setorRepository,
+            SetorPadraoService setorPadraoService,
             JwtService jwtService,
-            AutorizacaoEmpresaService autorizacao, FuncionarioRepository funcionarioRepository
+            AutorizacaoEmpresaService autorizacao,
+            FuncionarioRepository funcionarioRepository
     ) {
         this.empresaRepository = empresaRepository;
         this.cargoRepository = cargoRepository;
         this.membroRepository = membroRepository;
         this.setorRepository = setorRepository;
+        this.setorPadraoService = setorPadraoService;
         this.autorizacao = autorizacao;
         this.funcionarioRepository = funcionarioRepository;
         this.jwtService = jwtService;
@@ -86,6 +90,9 @@ public VinculoEmpresaResponse criar(
                     .criadoPor(criador)
                     .build()
     );
+
+    Setor setorNaoAlocado =
+            setorPadraoService.obterOuCriar(empresa);
 
     Cargo administrador = cargoRepository.save(
             Cargo.builder()
@@ -117,6 +124,7 @@ public VinculoEmpresaResponse criar(
                     .empresa(empresa)
                     .funcionario(criador)
                     .cargo(administrador)
+                    .setor(setorNaoAlocado)
                     .proprietario(true)
                     .build()
     );
@@ -130,7 +138,7 @@ public VinculoEmpresaResponse criar(
             EmpresaResponse.from(
                     proprietario,
                     1,
-                    0,
+                    1,
                     true
             ),
             novoToken
@@ -271,11 +279,14 @@ public VinculoEmpresaResponse entrarPorCodigo(
                     )
             );
 
+    Setor setorNaoAlocado =
+            setorPadraoService.obterOuCriar(empresa);
+
     MembroEmpresa membro = MembroEmpresa.builder()
             .empresa(empresa)
             .funcionario(usuario)
             .cargo(colaborador)
-            .setor(null)
+            .setor(setorNaoAlocado)
             .proprietario(false)
             .ativo(true)
             .build();
@@ -513,7 +524,7 @@ public VinculoEmpresaResponse selecionar(
         Cargo cargo = buscarCargo(empresaId, request.cargoId());
 
         Setor setor = request.setorId() == null
-                ? null
+                ? setorPadraoService.obterOuCriar(membro.getEmpresa())
                 : buscarSetor(empresaId, request.setorId());
 
         membro.setCargo(cargo);
@@ -574,6 +585,12 @@ public VinculoEmpresaResponse selecionar(
                         Permissoes.GERENCIAR_SETORES
                 );
 
+        if (setorPadraoService.ehNomePadrao(request.nome())) {
+            throw new IllegalArgumentException(
+                    "O setor Não alocado é criado automaticamente"
+            );
+        }
+
         if (setorRepository
                 .findByEmpresaIdAndNomeIgnoreCase(
                         empresaId,
@@ -613,6 +630,23 @@ public VinculoEmpresaResponse selecionar(
 
         Setor setor = buscarSetor(empresaId, setorId);
 
+        boolean setorPadrao =
+                setorPadraoService.ehSetorPadrao(setor);
+
+        if (setorPadrao
+                && !setorPadraoService.ehNomePadrao(request.nome())) {
+            throw new IllegalArgumentException(
+                    "O setor Não alocado não pode ser renomeado"
+            );
+        }
+
+        if (!setorPadrao
+                && setorPadraoService.ehNomePadrao(request.nome())) {
+            throw new IllegalArgumentException(
+                    "O nome Não alocado é reservado ao setor automático"
+            );
+        }
+
         setorRepository
                 .findByEmpresaIdAndNomeIgnoreCase(
                         empresaId,
@@ -625,7 +659,11 @@ public VinculoEmpresaResponse selecionar(
                     );
                 });
 
-        setor.setNome(request.nome().trim());
+        setor.setNome(
+                setorPadrao
+                        ? SetorPadraoService.NOME_SETOR_PADRAO
+                        : request.nome().trim()
+        );
         setor.setQuantidadeColaboradores(
                 request.quantidadeColaboradores()
         );
@@ -654,7 +692,7 @@ public MembroResponse atualizarSetorMembro(
     );
 
     Setor setor = request.setorId() == null
-            ? null
+            ? setorPadraoService.obterOuCriar(membro.getEmpresa())
             : buscarSetor(
                     empresaId,
                     request.setorId()
@@ -680,6 +718,12 @@ public MembroResponse atualizarSetorMembro(
         );
 
         Setor setor = buscarSetor(empresaId, setorId);
+
+        if (setorPadraoService.ehSetorPadrao(setor)) {
+            throw new IllegalArgumentException(
+                    "O setor Não alocado não pode ser excluído"
+            );
+        }
 
         if (membroRepository.countBySetorIdAndAtivoTrue(setorId) > 0) {
             throw new IllegalArgumentException(
