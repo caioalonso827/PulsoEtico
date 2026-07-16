@@ -9,6 +9,7 @@ import com.pulsoetico.pulsoetico.models.AplicacaoFormulario;
 import com.pulsoetico.pulsoetico.models.AvaliacaoRisco;
 import com.pulsoetico.pulsoetico.models.Cargo;
 import com.pulsoetico.pulsoetico.models.CheckinHumor;
+import com.pulsoetico.pulsoetico.models.ControleCheckinHumorDiario;
 import com.pulsoetico.pulsoetico.models.Denuncia;
 import com.pulsoetico.pulsoetico.models.Empresa;
 import com.pulsoetico.pulsoetico.models.MembroEmpresa;
@@ -20,6 +21,7 @@ import com.pulsoetico.pulsoetico.repositories.AplicacaoFormularioRepository;
 import com.pulsoetico.pulsoetico.repositories.AvaliacaoRiscoRepository;
 import com.pulsoetico.pulsoetico.repositories.CargoRepository;
 import com.pulsoetico.pulsoetico.repositories.CheckinHumorRepository;
+import com.pulsoetico.pulsoetico.repositories.ControleCheckinHumorDiarioRepository;
 import com.pulsoetico.pulsoetico.repositories.DenunciaRepository;
 import com.pulsoetico.pulsoetico.repositories.EmpresaRepository;
 import com.pulsoetico.pulsoetico.repositories.MembroEmpresaRepository;
@@ -37,6 +39,7 @@ public class EmpresaExclusaoService {
     private final AvaliacaoRiscoRepository avaliacaoRiscoRepository;
     private final DenunciaRepository denunciaRepository;
     private final CheckinHumorRepository checkinHumorRepository;
+    private final ControleCheckinHumorDiarioRepository controleCheckinHumorDiarioRepository;
     private final RegistroPontoRepository registroPontoRepository;
     private final MembroEmpresaRepository membroEmpresaRepository;
     private final CargoRepository cargoRepository;
@@ -50,6 +53,7 @@ public class EmpresaExclusaoService {
             AvaliacaoRiscoRepository avaliacaoRiscoRepository,
             DenunciaRepository denunciaRepository,
             CheckinHumorRepository checkinHumorRepository,
+            ControleCheckinHumorDiarioRepository controleCheckinHumorDiarioRepository,
             RegistroPontoRepository registroPontoRepository,
             MembroEmpresaRepository membroEmpresaRepository,
             CargoRepository cargoRepository,
@@ -68,6 +72,8 @@ public class EmpresaExclusaoService {
                 denunciaRepository;
         this.checkinHumorRepository =
                 checkinHumorRepository;
+        this.controleCheckinHumorDiarioRepository =
+                controleCheckinHumorDiarioRepository;
         this.registroPontoRepository =
                 registroPontoRepository;
         this.membroEmpresaRepository =
@@ -153,6 +159,17 @@ public class EmpresaExclusaoService {
 
         checkinHumorRepository.deleteAll(checkins);
         checkinHumorRepository.flush();
+
+        /*
+         * Os controles diários apontam para empresa e funcionário. Eles devem
+         * ser removidos antes dos membros e da própria empresa.
+         */
+        List<ControleCheckinHumorDiario> controlesCheckin =
+                controleCheckinHumorDiarioRepository
+                        .findAllByEmpresa_Id(empresaId);
+
+        controleCheckinHumorDiarioRepository.deleteAll(controlesCheckin);
+        controleCheckinHumorDiarioRepository.flush();
 
         /*
          * RegistroPonto pode estar ligado diretamente à empresa

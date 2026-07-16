@@ -33,6 +33,14 @@ public interface MembroEmpresaRepository
             @Param("membroId") Long membroId
     );
 
+    @Query(
+            value = "SELECT id FROM membros_empresa WHERE id = :membroId FOR UPDATE",
+            nativeQuery = true
+    )
+    Optional<Long> bloquearMembroParaCheckinHumor(
+            @Param("membroId") Long membroId
+    );
+
     List<MembroEmpresa>
     findAllByFuncionarioIdAndAtivoTrueOrderByEntrouEmDesc(
             Long funcionarioId
@@ -86,11 +94,11 @@ public interface MembroEmpresaRepository
     );
 
     Optional<MembroEmpresa> findByEmpresa_IdAndFuncionario_Id(
-        Long empresaId,
-        Long funcionarioId
-);
+            Long empresaId,
+            Long funcionarioId
+    );
 
-List<MembroEmpresa> findAllByEmpresaId(
-        Long empresaId
-);
+    List<MembroEmpresa> findAllByEmpresaId(
+            Long empresaId
+    );
 }
