@@ -22,9 +22,12 @@ import com.pulsoetico.pulsoetico.models.Setor;
 import com.pulsoetico.pulsoetico.models.StatusAplicacaoFormulario;
 import com.pulsoetico.pulsoetico.models.dtos.AlternativaFormularioResponse;
 import com.pulsoetico.pulsoetico.models.dtos.AplicacaoFormularioResponse;
+import com.pulsoetico.pulsoetico.models.dtos.DistribuicaoRespostaResponse;
 import com.pulsoetico.pulsoetico.models.dtos.FormularioModeloResponse;
+import com.pulsoetico.pulsoetico.models.dtos.FormularioResultadoResponse;
 import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
 import com.pulsoetico.pulsoetico.models.dtos.PerguntaFormularioResponse;
+import com.pulsoetico.pulsoetico.models.dtos.PerguntaResultadoResponse;
 import com.pulsoetico.pulsoetico.models.dtos.ResponderFormularioRequest;
 import com.pulsoetico.pulsoetico.models.dtos.RespostaPerguntaRequest;
 import com.pulsoetico.pulsoetico.repositories.AplicacaoFormularioRepository;
@@ -105,6 +108,187 @@ public class FormularioService {
                 .stream()
                 .map(this::converterParaResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public FormularioResultadoResponse buscarResultados(
+            Long empresaId,
+            Long aplicacaoId,
+            Funcionario usuario
+    ) {
+        autorizacao.exigirPermissao(
+                empresaId,
+                usuario,
+                Permissoes.GERENCIAR_PESQUISAS
+        );
+
+        AplicacaoFormulario aplicacao =
+                aplicacaoFormularioRepository
+                        .findByIdAndEmpresa_Id(
+                                aplicacaoId,
+                                empresaId
+                        )
+                        .orElseThrow(() ->
+                                new EntityNotFoundException(
+                                        "Aplicação de formulário não encontrada"
+                                )
+                        );
+
+        long totalRespostas = respostaRepository
+                .countByAplicacaoId(aplicacaoId);
+
+        int minimoRespostas = aplicacao.getMinimoRespostas() == null
+                ? 5
+                : aplicacao.getMinimoRespostas();
+
+        long respostasFaltantes = Math.max(
+                0L,
+                minimoRespostas - totalRespostas
+        );
+
+        if (totalRespostas < minimoRespostas) {
+            return criarResultadoResponse(
+                    aplicacao,
+                    totalRespostas,
+                    respostasFaltantes,
+                    false,
+                    "São necessárias pelo menos "
+                            + minimoRespostas
+                            + " respostas para preservar o anonimato. "
+                            + "Ainda "
+                            + (respostasFaltantes == 1
+                                    ? "falta 1 resposta."
+                                    : "faltam "
+                                            + respostasFaltantes
+                                            + " respostas."),
+                    null,
+                    List.of()
+            );
+        }
+
+        List<RespostaFormulario> respostas = respostaRepository
+                .findAllComItensByAplicacaoId(aplicacaoId);
+
+        Map<Long, List<Integer>> valoresPorPergunta =
+                new HashMap<>();
+
+        for (RespostaFormulario resposta : respostas) {
+            for (RespostaPergunta item : resposta.getRespostas()) {
+                if (item.getPergunta() == null
+                        || item.getPergunta().getId() == null
+                        || item.getValor() == null
+                        || item.getValor() < 1
+                        || item.getValor() > 5) {
+                    continue;
+                }
+
+                valoresPorPergunta
+                        .computeIfAbsent(
+                                item.getPergunta().getId(),
+                                chave -> new ArrayList<>()
+                        )
+                        .add(item.getValor());
+            }
+        }
+
+        List<PerguntaFormulario> perguntasOrdenadas = aplicacao
+                .getFormulario()
+                .getPerguntas()
+                .stream()
+                .sorted(java.util.Comparator.comparing(
+                        PerguntaFormulario::getOrdem,
+                        java.util.Comparator.nullsLast(
+                                java.util.Comparator.naturalOrder()
+                        )
+                ))
+                .toList();
+
+        List<PerguntaResultadoResponse> resultadosPerguntas =
+                new ArrayList<>();
+
+        long somaGeral = 0L;
+        long quantidadeValoresGeral = 0L;
+
+        for (PerguntaFormulario pergunta : perguntasOrdenadas) {
+            List<Integer> valores = valoresPorPergunta
+                    .getOrDefault(
+                            pergunta.getId(),
+                            List.of()
+                    );
+
+            long quantidadeRespostasPergunta = valores.size();
+            long somaPergunta = valores
+                    .stream()
+                    .mapToLong(Integer::longValue)
+                    .sum();
+
+            double mediaPergunta = quantidadeRespostasPergunta == 0
+                    ? 0.0
+                    : arredondarDuasCasas(
+                            (double) somaPergunta
+                                    / quantidadeRespostasPergunta
+                    );
+
+            List<DistribuicaoRespostaResponse> distribuicao =
+                    new ArrayList<>();
+
+            for (int valor = 1; valor <= 5; valor++) {
+                int alternativaAtual = valor;
+
+                long quantidade = valores
+                        .stream()
+                        .filter(item -> item == alternativaAtual)
+                        .count();
+
+                double percentual = quantidadeRespostasPergunta == 0
+                        ? 0.0
+                        : arredondarDuasCasas(
+                                100.0
+                                        * quantidade
+                                        / quantidadeRespostasPergunta
+                        );
+
+                distribuicao.add(
+                        new DistribuicaoRespostaResponse(
+                                valor,
+                                textoAlternativa(valor),
+                                quantidade,
+                                percentual
+                        )
+                );
+            }
+
+            resultadosPerguntas.add(
+                    new PerguntaResultadoResponse(
+                            pergunta.getId(),
+                            pergunta.getTexto(),
+                            pergunta.getOrdem(),
+                            quantidadeRespostasPergunta,
+                            mediaPergunta,
+                            distribuicao
+                    )
+            );
+
+            somaGeral += somaPergunta;
+            quantidadeValoresGeral += quantidadeRespostasPergunta;
+        }
+
+        Double mediaGeral = quantidadeValoresGeral == 0
+                ? 0.0
+                : arredondarDuasCasas(
+                        (double) somaGeral
+                                / quantidadeValoresGeral
+                );
+
+        return criarResultadoResponse(
+                aplicacao,
+                totalRespostas,
+                0L,
+                true,
+                "Resultados agregados disponíveis.",
+                mediaGeral,
+                resultadosPerguntas
+        );
     }
 
     @Transactional
@@ -577,13 +761,71 @@ private void validarAplicacaoAtiva(
         );
     }
 }
+    private FormularioResultadoResponse criarResultadoResponse(
+            AplicacaoFormulario aplicacao,
+            long totalRespostas,
+            long respostasFaltantes,
+            boolean resultadoDisponivel,
+            String mensagem,
+            Double mediaGeral,
+            List<PerguntaResultadoResponse> perguntas
+    ) {
+        List<Long> setorIds = aplicacao.getSetores()
+                .stream()
+                .map(Setor::getId)
+                .sorted()
+                .toList();
+
+        FormularioModelo formulario = aplicacao.getFormulario();
+
+        return new FormularioResultadoResponse(
+                aplicacao.getId(),
+                formulario.getId(),
+                formulario.getTipo(),
+                formulario.getTitulo(),
+                formulario.getDescricao(),
+                aplicacao.getStatusAtual(),
+                setorIds,
+                aplicacao.getInicioEm(),
+                aplicacao.getFimEm(),
+                aplicacao.getCanceladoEm(),
+                aplicacao.getEncerradoEm(),
+                aplicacao.getMinimoRespostas() == null
+                        ? 5
+                        : aplicacao.getMinimoRespostas(),
+                totalRespostas,
+                respostasFaltantes,
+                resultadoDisponivel,
+                mensagem,
+                mediaGeral,
+                perguntas
+        );
+    }
+
+    private double arredondarDuasCasas(double valor) {
+        return Math.round(valor * 100.0) / 100.0;
+    }
+
+    private String textoAlternativa(int valor) {
+        return switch (valor) {
+            case 1 -> "Nunca";
+            case 2 -> "Raramente";
+            case 3 -> "Às vezes";
+            case 4 -> "Frequentemente";
+            case 5 -> "Sempre";
+            default -> throw new IllegalArgumentException(
+                    "Valor de alternativa inválido"
+            );
+        };
+    }
+
     private List<AlternativaFormularioResponse> criarAlternativas() {
         return List.of(
-                new AlternativaFormularioResponse(1, "Nunca"),
-                new AlternativaFormularioResponse(2, "Raramente"),
-                new AlternativaFormularioResponse(3, "Às vezes"),
-                new AlternativaFormularioResponse(4, "Frequentemente"),
-                new AlternativaFormularioResponse(5, "Sempre")
+                new AlternativaFormularioResponse(1, textoAlternativa(1)),
+                new AlternativaFormularioResponse(2, textoAlternativa(2)),
+                new AlternativaFormularioResponse(3, textoAlternativa(3)),
+                new AlternativaFormularioResponse(4, textoAlternativa(4)),
+                new AlternativaFormularioResponse(5, textoAlternativa(5))
         );
     }
 

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pulsoetico.pulsoetico.models.dtos.AplicacaoFormularioResponse;
 import com.pulsoetico.pulsoetico.models.dtos.FormularioModeloResponse;
+import com.pulsoetico.pulsoetico.models.dtos.FormularioResultadoResponse;
 import com.pulsoetico.pulsoetico.models.dtos.LiberarFormularioRequest;
 import com.pulsoetico.pulsoetico.security.FuncionarioUserDetails;
 import com.pulsoetico.pulsoetico.services.FormularioService;
@@ -55,6 +56,20 @@ public class FormularioPainelController {
     ) {
         return formularioService.listarAplicacoes(
                 empresaId,
+                principal.getFuncionario()
+        );
+    }
+
+    @GetMapping("/aplicacoes/{aplicacaoId}/resultados")
+    public FormularioResultadoResponse buscarResultados(
+            @PathVariable Long empresaId,
+            @PathVariable Long aplicacaoId,
+            @AuthenticationPrincipal
+            FuncionarioUserDetails principal
+    ) {
+        return formularioService.buscarResultados(
+                empresaId,
+                aplicacaoId,
                 principal.getFuncionario()
         );
     }
