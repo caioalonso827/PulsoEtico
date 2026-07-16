@@ -20,7 +20,8 @@ import com.pulsoetico.pulsoetico.repositories.RegistroPontoRepository;
 public class HorasExtrasCalculatorService {
 
     private static final double HORAS_DIARIAS_PADRAO = 8.0;
-    private static final ZoneId ZONA = ZoneId.systemDefault();
+    private static final ZoneId ZONA =
+        ZoneId.of("America/Sao_Paulo");
 
     private final RegistroPontoRepository registroPontoRepository;
 

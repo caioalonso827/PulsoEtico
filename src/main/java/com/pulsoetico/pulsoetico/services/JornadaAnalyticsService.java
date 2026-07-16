@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -267,100 +268,134 @@ public class JornadaAnalyticsService {
             );
         }
 
-        if (ehDiaUtil(dia)) {
-            for (MembroEmpresa membro : membrosAtivos) {
-                Long funcionarioId =
-                        membro.getFuncionario().getId();
+ LocalDate hoje = LocalDate.now(ZONA);
 
-                boolean bateuPonto =
-                        porFuncionario.containsKey(
-                                funcionarioId
-                        );
+if (ehDiaUtil(dia) && !dia.isAfter(hoje)) {
+    for (MembroEmpresa membro : membrosAtivos) {
+        Long funcionarioId =
+                membro.getFuncionario().getId();
 
-                boolean jaEraMembro =
-                        membro.getEntrouEm()
-                                .isBefore(fim);
+        boolean bateuPonto =
+                porFuncionario.containsKey(funcionarioId);
 
-                if (!bateuPonto && jaEraMembro) {
-                    resultado.add(
-                            new RegistroDiaResponse(
-                                    membro
-                                            .getFuncionario()
-                                            .getNomeCompleto(),
-                                    obterSetorAtual(membro),
-                                    null,
-                                    null,
-                                    null,
-                                    "FALTA"
-                            )
-                    );
-                }
-            }
+        LocalDate dataEntradaNaEmpresa =
+                LocalDate.ofInstant(
+                        membro.getEntrouEm(),
+                        ZONA
+                );
+
+        boolean jaEraMembro =
+                !dia.isBefore(dataEntradaNaEmpresa);
+
+        if (!bateuPonto && jaEraMembro) {
+            String status =
+                    dia.isBefore(hoje)
+                            ? "FALTA"
+                            : "PENDENTE";
+
+            resultado.add(new RegistroDiaResponse(
+                    membro.getFuncionario()
+                            .getNomeCompleto(),
+                    obterSetorAtual(membro),
+                    null,
+                    null,
+                    null,
+                    status
+            ));
         }
+    }
+}
 
         return resultado;
     }
 
     private long calcularFaltas(
-            Instant inicio,
-            Instant fim,
-            Map<Long, List<RegistroPonto>>
-                    registrosPorFuncionario,
-            List<MembroEmpresa> membrosAtivos
-    ) {
-        long totalFaltas = 0;
+        Instant inicio,
+        Instant fim,
+        Map<Long, List<RegistroPonto>> registrosPorFuncionario,
+        List<MembroEmpresa> membrosAtivos
+) {
+    long totalFaltas = 0;
 
-        LocalDate diaInicio =
-                LocalDate.ofInstant(inicio, ZONA);
+    LocalDate inicioDoPeriodo =
+            LocalDate.ofInstant(inicio, ZONA);
 
-        LocalDate diaFim =
-                LocalDate.ofInstant(fim, ZONA);
+    LocalDate hoje =
+            LocalDate.now(ZONA);
 
-        for (MembroEmpresa membro : membrosAtivos) {
-            Long funcionarioId =
-                    membro.getFuncionario().getId();
+    LocalDate fimSolicitado =
+            LocalDate.ofInstant(fim, ZONA);
 
-            Map<LocalDate, Double> horasPorDia =
-                    registrosPorFuncionario
-                            .containsKey(funcionarioId)
-                            ? horasExtrasCalculatorService
-                                    .calcularHorasTrabalhadasPorDia(
-                                            registrosPorFuncionario
-                                                    .get(
-                                                            funcionarioId
-                                                    )
-                                    )
-                            : Map.of();
+    /*
+     * Nunca conta o dia atual como falta.
+     * O dia ainda pode estar em andamento.
+     */
+    LocalDate ultimoDiaFinalizado =
+            fimSolicitado.isBefore(hoje)
+                    ? fimSolicitado
+                    : hoje.minusDays(1);
 
-            LocalDate dataEntradaNaEmpresa =
-                    LocalDate.ofInstant(
-                            membro.getEntrouEm(),
-                            ZONA
-                    );
+    if (ultimoDiaFinalizado.isBefore(inicioDoPeriodo)) {
+        return 0;
+    }
 
-            for (
-                    LocalDate dia = diaInicio;
-                    !dia.isAfter(diaFim);
-                    dia = dia.plusDays(1)
-            ) {
-                boolean jaEraMembro =
-                        !dia.isBefore(
-                                dataEntradaNaEmpresa
-                        );
+    for (MembroEmpresa membro : membrosAtivos) {
+        Long funcionarioId =
+                membro.getFuncionario().getId();
 
-                boolean naoTrabalhouNesseDia =
-                        !horasPorDia.containsKey(dia);
+        /*
+         * Qualquer registro indica presença.
+         * Uma entrada sem saída será INCOMPLETA,
+         * mas não será considerada falta.
+         */
+        Set<LocalDate> diasComRegistro =
+                registrosPorFuncionario
+                        .getOrDefault(
+                                funcionarioId,
+                                List.of()
+                        )
+                        .stream()
+                        .map(registro ->
+                                LocalDate.ofInstant(
+                                        registro.getHorario(),
+                                        ZONA
+                                )
+                        )
+                        .collect(Collectors.toSet());
 
-                if (ehDiaUtil(dia)
-                        && jaEraMembro
-                        && naoTrabalhouNesseDia) {
-                    totalFaltas++;
-                }
+        LocalDate dataEntradaNaEmpresa =
+                LocalDate.ofInstant(
+                        membro.getEntrouEm(),
+                        ZONA
+                );
+
+        /*
+         * Não conta falta no mesmo dia em que
+         * o usuário entrou na empresa.
+         */
+        LocalDate primeiroDiaObrigatorio =
+                dataEntradaNaEmpresa.plusDays(1);
+
+        LocalDate inicioDoMembro =
+                primeiroDiaObrigatorio.isAfter(inicioDoPeriodo)
+                        ? primeiroDiaObrigatorio
+                        : inicioDoPeriodo;
+
+        for (
+                LocalDate dia = inicioDoMembro;
+                !dia.isAfter(ultimoDiaFinalizado);
+                dia = dia.plusDays(1)
+        ) {
+            if (ehDiaUtil(dia)
+                    && !diasComRegistro.contains(dia)) {
+
+                totalFaltas++;
             }
         }
-
-        return totalFaltas;
     }
+
+    return totalFaltas;
+}
 
     private String calcularJornadaMediaFormatada(
             List<RegistroPonto> registros
