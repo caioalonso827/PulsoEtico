@@ -18,9 +18,37 @@ public interface AplicacaoFormularioRepository
             Long empresaId
     );
 
-    List<AplicacaoFormulario>
-    findAllByEmpresaIdOrderByCriadoEmDesc(
-            Long empresaId
+    /**
+     * Retorna somente as aplicações que ainda devem aparecer no painel do
+     * gestor. Aplicações encerradas ou canceladas deixam de ser exibidas
+     * três dias depois do encerramento efetivo, mas permanecem preservadas
+     * no banco para histórico e indicadores.
+     */
+    @Query("""
+            SELECT DISTINCT aplicacao
+            FROM AplicacaoFormulario aplicacao
+            WHERE aplicacao.empresa.id = :empresaId
+              AND (
+                    (
+                        aplicacao.canceladoEm IS NOT NULL
+                        AND aplicacao.canceladoEm >= :limiteDeVisibilidade
+                    )
+                    OR (
+                        aplicacao.canceladoEm IS NULL
+                        AND aplicacao.encerradoEm IS NOT NULL
+                        AND aplicacao.encerradoEm >= :limiteDeVisibilidade
+                    )
+                    OR (
+                        aplicacao.canceladoEm IS NULL
+                        AND aplicacao.encerradoEm IS NULL
+                        AND aplicacao.fimEm >= :limiteDeVisibilidade
+                    )
+              )
+            ORDER BY aplicacao.criadoEm DESC
+            """)
+    List<AplicacaoFormulario> findVisiveisParaGestor(
+            @Param("empresaId") Long empresaId,
+            @Param("limiteDeVisibilidade") Instant limiteDeVisibilidade
     );
 
  @Query("""
@@ -62,4 +90,10 @@ List<AplicacaoFormulario> buscarDisponiveis(
             @Param("setorId") Long setorId,
             @Param("agora") Instant agora
     );
+
+    List<AplicacaoFormulario> findAllByEmpresaIdOrderByCriadoEmDesc(
+        Long empresaId
+);
+
+
 }

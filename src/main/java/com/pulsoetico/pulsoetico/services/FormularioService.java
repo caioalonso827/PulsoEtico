@@ -38,6 +38,8 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class FormularioService {
 
+    private static final long DIAS_VISIBILIDADE_APOS_ENCERRAMENTO = 3;
+
     private final AutorizacaoEmpresaService autorizacao;
     private final FormularioModeloRepository formularioRepository;
     private final AplicacaoFormularioRepository aplicacaoFormularioRepository;
@@ -90,8 +92,16 @@ public class FormularioService {
                 Permissoes.GERENCIAR_PESQUISAS
         );
 
+        Instant limiteDeVisibilidade = Instant.now().minus(
+                DIAS_VISIBILIDADE_APOS_ENCERRAMENTO,
+                ChronoUnit.DAYS
+        );
+
         return aplicacaoFormularioRepository
-                .findAllByEmpresaIdOrderByCriadoEmDesc(empresaId)
+                .findVisiveisParaGestor(
+                        empresaId,
+                        limiteDeVisibilidade
+                )
                 .stream()
                 .map(this::converterParaResponse)
                 .toList();
